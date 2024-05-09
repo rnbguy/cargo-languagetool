@@ -1,168 +1,169 @@
-//! The docs module contains all the necessary stuff to work with doc comments.
+//! This main module for cargo grammar checking.
+//! Use wisely.
 
-use color_eyre::{eyre::ContextCompat, Report, Result};
-use std::collections::HashMap;
+mod doc;
 
-// Ideally error should be printed that way:
-//
-// error[grammar]: Missing subject
-// --> src/main.rs:138:16
-//     |
-// 138 | /// Reads the .rs files in the directory recursively.
-//     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//     |     - This sentence appears to be missing a subject. Consider adding a subject or rewriting the sentence.
-//
-//
-//
-// error[grammar]: Spelling
-// --> src/main.rs:138:16
-//     |
-// 138 | /// Thisf module is for easing the pain with printing text in the terminal.
-//     |     ^^^^^
-//     |     - The word "Thisf" is not in our dictionary. If you are sure this spelling is correct,
-//     |     - you can add it to your personal dictionary to prevent future alerts.
-//
+use doc::{Docs, FixedDoc, FixedDocs};
 
-#[derive(Debug, Clone)]
-pub struct Docs(pub HashMap<String, Vec<proc_macro2::Literal>>);
+const ENVIRONMENT_VARIABLE_NAME: &str = "GRAMMARLY_API_KEY";
 
-impl Docs {
-    fn append(&mut self, docs: Self) {
-        for (k, mut v) in docs.0 {
-            self.0.entry(k).or_default().append(&mut v);
-        }
+use clap::Parser;
+use color_eyre::{eyre::ContextCompat, Result};
+
+#[derive(Parser)]
+#[command(name = "cargo-grammarly")]
+#[command(version, about)]
+pub struct App {
+    #[clap(short, long, value_name = "API_KEY")]
+    api_key: Option<String>,
+}
+
+impl App {
+    pub fn run(&self) -> Result<()> {
+        let api_key = dbg!(std::env::var(ENVIRONMENT_VARIABLE_NAME)
+            .ok()
+            .or_else(|| self.api_key.clone())
+            .context("API key is not provided")?);
+
+        let source_directory = format!("{}/src", std::env::var("PWD")?);
+        check_grammar(&api_key, &fetch_docs(&source_directory)?)?;
+
+        Ok(())
     }
 }
 
-impl<T> From<(T, proc_macro2::TokenStream)> for Docs
-where
-    T: AsRef<str>,
-{
-    fn from(stream: (T, proc_macro2::TokenStream)) -> Self {
-        use proc_macro2::TokenTree;
+/// Reads the .rs files in the directory recursively.
+fn fetch_docs(dir: &str) -> Result<Vec<Docs>> {
+    use proc_macro2::TokenStream;
 
-        let mut docs = Self(HashMap::new());
-        let mut is_doc = false;
-        for tree in stream.1 {
-            match tree {
-                TokenTree::Ident(ident) => is_doc = ident == "doc",
-                TokenTree::Group(group) => {
-                    docs.append(Self::from((stream.0.as_ref().to_owned(), group.stream())));
-                }
-                TokenTree::Literal(literal) => {
-                    if is_doc {
-                        docs.0
-                            .entry(stream.0.as_ref().to_owned())
-                            .or_default()
-                            .push(literal);
-                    }
-                }
-                TokenTree::Punct(_) => todo!(),
-            };
-        }
-        docs
-    }
+    // dbg!(dir);
+
+    let is_rs = |e: &walkdir::DirEntry| -> bool {
+        e.file_type().is_file()
+            && e.path()
+                .extension()
+                .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
+    };
+    let parse_docs = |path: &String| -> Result<Docs> {
+        use std::fs;
+        let content = fs::read_to_string(path)?;
+        let stream: TokenStream = syn::parse_str(&content)?;
+        // dbg!(&stream);
+        Ok(Docs::from((path, stream)))
+    };
+
+    let files = walkdir::WalkDir::new(dir)
+        .max_depth(999)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .filter(is_rs)
+        .filter_map(|e| Some(e.path().to_str()?.to_owned()))
+        .collect::<Vec<String>>();
+    // dbg!(&files);
+
+    files
+        .iter()
+        .map(parse_docs)
+        .filter(|d| d.as_ref().map(|x| x.0.is_empty()).ok() == Some(false))
+        .collect::<Result<_>>()
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct FixedDocPos {
-    pub line: usize,
-    pub column: usize,
+fn doc_checked<'a>(api_key: &str, doc: &'a mut FixedDoc) -> &'a mut FixedDoc {
+    doc.check_response = grammarbot_io::Request::from(&doc.text)
+        .api_key(api_key)
+        .send()
+        .ok();
+    doc
 }
 
-impl From<proc_macro2::LineColumn> for FixedDocPos {
-    fn from(span: proc_macro2::LineColumn) -> Self {
-        Self {
-            line: span.line,
-            column: span.column,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct FixedDocSpan {
-    pub start: FixedDocPos,
-    pub end: FixedDocPos,
-}
-
-impl From<proc_macro2::Span> for FixedDocSpan {
-    fn from(span: proc_macro2::Span) -> Self {
-        Self {
-            start: span.start().into(),
-            end: span.end().into(),
+fn docs_checked<'a>(api_key: &str, docs: &'a mut FixedDocs) -> &'a mut FixedDocs {
+    for docs in docs.fixed.values_mut() {
+        for doc in docs {
+            let _ = doc_checked(api_key, doc);
         }
     }
+    docs
 }
 
-/// The doc is considered "fixed" when it contains text only.
-#[derive(Debug, Clone)]
-pub struct FixedDoc {
-    pub text: String,
-    pub span: FixedDocSpan,
-    pub check_response: Option<grammarbot_io::Response>,
-}
+const fn decimal_places(mut num: usize) -> usize {
+    let mut places = 1;
 
-#[derive(Debug, Clone)]
-pub struct FixedDocs {
-    pub original: Docs,
-    pub fixed: HashMap<String, Vec<FixedDoc>>,
-    // mappings: Vec<usize>,
-}
-
-fn fix_string(s: &str) -> String {
-    s.replace("///", "")
-        .replace("//!", "")
-        .replace(r#"\""#, r#"""#)
-        .trim_matches('\"')
-        .trim()
-        .to_owned()
-}
-
-// impl<T> From<T> for FixedDocs where T: AsRef<Docs> {
-//     fn from(original: T) -> FixedDocs {
-impl TryFrom<Docs> for FixedDocs {
-    type Error = Report;
-
-    fn try_from(original: Docs) -> Result<Self> {
-        // let mut fixed = Docs(HashMap::new());
-        // let mut mappings = Vec::new();
-        // let original = original.as_ref();
-        let mut fixed: HashMap<String, Vec<FixedDoc>> = HashMap::new();
-
-        for (file, docs) in &original.0 {
-            for doc in docs {
-                let original_string = doc.to_string();
-                let fixed_string = &fix_string(&original_string);
-                let start_column_diff = original_string.len() - fixed_string.len();
-                let mut span: FixedDocSpan = doc.span().into();
-                span.start.column += start_column_diff;
-                let current = FixedDoc {
-                    text: fixed_string.clone(),
-                    span,
-                    check_response: None,
-                };
-
-                if fixed.contains_key(file) {
-                    let fixed_docs = fixed.get_mut(file).context("No doc")?;
-                    let last = fixed_docs.last_mut().context("No last doc")?;
-
-                    // If the lines are consecutive, then these two doc comments belong to a single block.
-                    if current.span.start.line - last.span.end.line == 1 {
-                        last.text.push_str(&format!(" {fixed_string}"));
-                        last.span.end = current.span.end;
-                    } else {
-                        fixed_docs.push(current);
-                    }
-                } else {
-                    fixed.insert(file.clone(), vec![current]);
-                }
-            }
-        }
-
-        Ok(Self {
-            original,
-            fixed,
-            // mappings,
-        })
+    while num % 10 > 1 {
+        num /= 10;
+        places += 1;
     }
+
+    places
+}
+
+fn print_response(file: &str, doc: &FixedDoc) -> Result<()> {
+    let mut t = term::stdout().context("Failed to get stdout")?;
+
+    if let Some(grammarbot_io::Response::Success { matches, .. }) = &doc.check_response {
+        for m in matches {
+            // dbg!(&m);
+
+            let line_width = decimal_places(doc.span.start.line) + 2;
+
+            t.attr(term::Attr::Bold)?;
+            t.fg(term::color::RED)?;
+            write!(t, "error")?;
+            t.fg(term::color::WHITE)?;
+            writeln!(t, ": {}", m.short_message)?;
+            t.fg(term::color::BLUE)?;
+            write!(t, "{:>width$}", "-->", width = line_width)?;
+            let _ = t.reset();
+            writeln!(t, " {file}:{line}", file = file, line = doc.span.start.line)?;
+            t.fg(term::color::BLUE)?;
+            t.attr(term::Attr::Bold)?;
+            writeln!(t, "{:^width$}| ", " ", width = line_width)?;
+            write!(
+                t,
+                "{line:^width$}| ",
+                line = doc.span.start.line,
+                width = line_width
+            )?;
+            let _ = t.reset();
+            writeln!(t, "{}", m.sentence)?;
+            t.fg(term::color::BLUE)?;
+            t.attr(term::Attr::Bold)?;
+            write!(t, "{:^width$}| ", " ", width = line_width)?;
+            t.fg(term::color::RED)?;
+            writeln!(t, "- {}", m.message)?;
+            t.fg(term::color::BLUE)?;
+            writeln!(t, "{:^width$}| \n", " ", width = line_width)?;
+            let _ = t.reset();
+            t.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Pretty-printer.
+fn print_docs(docs: &mut FixedDocs) -> Result<()> {
+    for (file, docs) in &mut docs.fixed {
+        for doc in docs {
+            print_response(file, doc)?;
+        }
+    }
+    Ok(())
+}
+
+fn check_grammar(api_key: &str, docs: &[Docs]) -> Result<()> {
+    // dbg!(api_key);
+    // dbg!(docs);
+    let mut docs_for_grammarly: Vec<FixedDocs> = docs
+        .iter()
+        .map(|d| FixedDocs::try_from(d.clone()))
+        .collect::<Result<_>>()?;
+    // dbg!(&docs_for_grammarly);
+    for doc in docs_for_grammarly
+        .iter_mut()
+        .map(|d| docs_checked(api_key, d))
+    {
+        print_docs(doc)?;
+    }
+
+    Ok(())
 }
