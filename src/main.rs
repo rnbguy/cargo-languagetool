@@ -5,25 +5,28 @@ mod docs;
 use docs::{Docs, FixedDoc, FixedDocs};
 
 const ENVIRONMENT_VARIABLE_NAME: &str = "GRAMMARLY_API_KEY";
-const COMMAND_NAME: &str = "grammarly";
 const COMMAND_DESCRIPTION: &str =
     "A third-party cargo extension for checking grammar in docs/comments.";
 
-fn main() {
-    dotenv::dotenv().ok();
-    let api_key = std::env::var(ENVIRONMENT_VARIABLE_NAME).unwrap_or_default();
+use clap::Parser;
 
-    let _ = clap::App::new(format!("cargo-{}", COMMAND_NAME))
-        .about(COMMAND_DESCRIPTION)
-        .version(&clap::crate_version!()[..])
-        // We have to lie about our binary name since this will be a third party
-        // subcommand for cargo, this trick learned from cargo-outdated
-        .bin_name("cargo")
-        // We use a subcommand because parsed after `cargo` is sent to the third party plugin
-        // which will be interpreted as a subcommand/positional arg by clap
-        .subcommand(clap::SubCommand::with_name(COMMAND_NAME).about(COMMAND_DESCRIPTION))
-        .settings(&[clap::AppSettings::SubcommandRequired])
-        .get_matches();
+#[derive(Parser)]
+#[command(name = "cargo-grammarly")]
+#[command(version, about)]
+struct App {
+    #[clap(short, long, value_name = "API_KEY")]
+    api_key: Option<String>,
+}
+
+fn main() {
+    let app = App::parse();
+
+    dotenv::dotenv().ok();
+
+    let api_key = std::env::var(ENVIRONMENT_VARIABLE_NAME)
+        .ok()
+        .or_else(|| app.api_key)
+        .expect("Please provide a Grammarly API key");
 
     let source_directory = get_source_directory();
     check_grammar(&api_key, &fetch_docs(&source_directory));
@@ -69,7 +72,7 @@ fn fetch_docs(dir: &str) -> Vec<Docs> {
 }
 
 fn doc_checked<'a>(api_key: &str, doc: &'a mut FixedDoc) -> &'a mut FixedDoc {
-    doc.check_response = grammarly::Request::from(&doc.text)
+    doc.check_response = grammarbot_io::Request::from(&doc.text)
         .api_key(api_key)
         .send()
         .ok();
@@ -99,8 +102,14 @@ fn decimal_places(mut num: usize) -> usize {
 fn print_response(file: &str, doc: &FixedDoc) {
     let mut t = term::stdout().unwrap();
 
-    if let Some(r) = &doc.check_response {
-        for m in &r.matches {
+    if let Some(grammarbot_io::Response::Success {
+        software,
+        warnings,
+        language,
+        matches,
+    }) = &doc.check_response
+    {
+        for m in matches {
             // dbg!(&m);
 
             let line_width = decimal_places(doc.span.start.line) + 2;

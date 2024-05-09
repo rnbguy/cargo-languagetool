@@ -98,7 +98,7 @@ impl From<proc_macro2::Span> for FixedDocSpan {
 pub struct FixedDoc {
     pub text: String,
     pub span: FixedDocSpan,
-    pub check_response: Option<grammarly::Response>,
+    pub check_response: Option<grammarbot_io::Response>,
 }
 
 #[derive(Debug, Clone)]
