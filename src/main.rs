@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         .expect("Please provide a Grammarly API key");
 
     let source_directory = get_source_directory();
-    check_grammar(&api_key, &fetch_docs(&source_directory));
+    check_grammar(&api_key, &fetch_docs(&source_directory))?;
 
     Ok(())
 }
@@ -104,7 +104,7 @@ const fn decimal_places(mut num: usize) -> usize {
     places
 }
 
-fn print_response(file: &str, doc: &FixedDoc) {
+fn print_response(file: &str, doc: &FixedDoc) -> Result<()> {
     let mut t = term::stdout().unwrap();
 
     if let Some(grammarbot_io::Response::Success { matches, .. }) = &doc.check_response {
@@ -113,55 +113,65 @@ fn print_response(file: &str, doc: &FixedDoc) {
 
             let line_width = decimal_places(doc.span.start.line) + 2;
 
-            t.attr(term::Attr::Bold).unwrap();
-            t.fg(term::color::RED).unwrap();
-            write!(t, "error").unwrap();
-            t.fg(term::color::WHITE).unwrap();
-            writeln!(t, ": {}", m.short_message).unwrap();
-            t.fg(term::color::BLUE).unwrap();
-            write!(t, "{:>width$}", "-->", width = line_width).unwrap();
+            t.attr(term::Attr::Bold)?;
+            t.fg(term::color::RED)?;
+            write!(t, "error")?;
+            t.fg(term::color::WHITE)?;
+            writeln!(t, ": {}", m.short_message)?;
+            t.fg(term::color::BLUE)?;
+            write!(t, "{:>width$}", "-->", width = line_width)?;
             let _ = t.reset();
-            writeln!(t, " {file}:{line}", file = file, line = doc.span.start.line).unwrap();
-            t.fg(term::color::BLUE).unwrap();
-            t.attr(term::Attr::Bold).unwrap();
-            writeln!(t, "{:^width$}| ", " ", width = line_width).unwrap();
+            writeln!(t, " {file}:{line}", file = file, line = doc.span.start.line)?;
+            t.fg(term::color::BLUE)?;
+            t.attr(term::Attr::Bold)?;
+            writeln!(t, "{:^width$}| ", " ", width = line_width)?;
             write!(
                 t,
                 "{line:^width$}| ",
                 line = doc.span.start.line,
                 width = line_width
-            )
-            .unwrap();
+            )?;
             let _ = t.reset();
-            writeln!(t, "{}", m.sentence).unwrap();
-            t.fg(term::color::BLUE).unwrap();
-            t.attr(term::Attr::Bold).unwrap();
-            write!(t, "{:^width$}| ", " ", width = line_width).unwrap();
-            t.fg(term::color::RED).unwrap();
-            writeln!(t, "- {}", m.message).unwrap();
-            t.fg(term::color::BLUE).unwrap();
-            writeln!(t, "{:^width$}| \n", " ", width = line_width).unwrap();
+            writeln!(t, "{}", m.sentence)?;
+            t.fg(term::color::BLUE)?;
+            t.attr(term::Attr::Bold)?;
+            write!(t, "{:^width$}| ", " ", width = line_width)?;
+            t.fg(term::color::RED)?;
+            writeln!(t, "- {}", m.message)?;
+            t.fg(term::color::BLUE)?;
+            writeln!(t, "{:^width$}| \n", " ", width = line_width)?;
             let _ = t.reset();
-            t.flush().unwrap();
+            t.flush()?;
         }
     }
+
+    Ok(())
 }
 
 /// Pretty-printer.
-fn print_docs(docs: &mut FixedDocs) {
-    for (file, doc) in &mut docs.fixed {
-        doc.iter().for_each(|doc| print_response(file, doc));
+fn print_docs(docs: &mut FixedDocs) -> Result<()> {
+    for (file, docs) in &mut docs.fixed {
+        for doc in docs {
+            print_response(file, doc)?;
+        }
     }
+    Ok(())
 }
 
-fn check_grammar(api_key: &str, docs: &[Docs]) {
+fn check_grammar(api_key: &str, docs: &[Docs]) -> Result<()> {
     // dbg!(api_key);
     // dbg!(docs);
-    let mut docs_for_grammarly: Vec<FixedDocs> =
-        docs.iter().map(|d| FixedDocs::from(d.clone())).collect();
+    let mut docs_for_grammarly: Vec<FixedDocs> = docs
+        .iter()
+        .map(|d| FixedDocs::try_from(d.clone()))
+        .collect::<Result<_>>()?;
     // dbg!(&docs_for_grammarly);
-    docs_for_grammarly
+    for doc in docs_for_grammarly
         .iter_mut()
         .map(|d| docs_checked(api_key, d))
-        .for_each(print_docs);
+    {
+        print_docs(doc)?;
+    }
+
+    Ok(())
 }

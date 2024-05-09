@@ -1,5 +1,6 @@
 //! The docs module contains all the necessary stuff to work with doc comments.
 
+use color_eyre::{eyre::ContextCompat, Report, Result};
 use std::collections::HashMap;
 
 // Ideally error should be printed that way:
@@ -56,7 +57,7 @@ where
                             .push(literal);
                     }
                 }
-                _ => {}
+                TokenTree::Punct(_) => todo!(),
             };
         }
         docs
@@ -119,8 +120,10 @@ fn fix_string(s: &str) -> String {
 
 // impl<T> From<T> for FixedDocs where T: AsRef<Docs> {
 //     fn from(original: T) -> FixedDocs {
-impl From<Docs> for FixedDocs {
-    fn from(original: Docs) -> Self {
+impl TryFrom<Docs> for FixedDocs {
+    type Error = Report;
+
+    fn try_from(original: Docs) -> Result<Self> {
         // let mut fixed = Docs(HashMap::new());
         // let mut mappings = Vec::new();
         // let original = original.as_ref();
@@ -139,11 +142,9 @@ impl From<Docs> for FixedDocs {
                     check_response: None,
                 };
 
-                if !fixed.contains_key(file) {
-                    fixed.insert(file.clone(), vec![current]);
-                } else {
-                    let fixed_docs = fixed.get_mut(file).unwrap();
-                    let last = fixed_docs.last_mut().unwrap();
+                if fixed.contains_key(file) {
+                    let fixed_docs = fixed.get_mut(file).context("No doc")?;
+                    let last = fixed_docs.last_mut().context("No last doc")?;
 
                     // If the lines are consecutive, then these two doc comments belong to a single block.
                     if current.span.start.line - last.span.end.line == 1 {
@@ -152,14 +153,16 @@ impl From<Docs> for FixedDocs {
                     } else {
                         fixed_docs.push(current);
                     }
+                } else {
+                    fixed.insert(file.clone(), vec![current]);
                 }
             }
         }
 
-        Self {
+        Ok(Self {
             original,
             fixed,
             // mappings,
-        }
+        })
     }
 }
