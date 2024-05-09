@@ -5,8 +5,6 @@ mod docs;
 use docs::{Docs, FixedDoc, FixedDocs};
 
 const ENVIRONMENT_VARIABLE_NAME: &str = "GRAMMARLY_API_KEY";
-const COMMAND_DESCRIPTION: &str =
-    "A third-party cargo extension for checking grammar in docs/comments.";
 
 use clap::Parser;
 
@@ -25,7 +23,7 @@ fn main() {
 
     let api_key = std::env::var(ENVIRONMENT_VARIABLE_NAME)
         .ok()
-        .or_else(|| app.api_key)
+        .or(app.api_key)
         .expect("Please provide a Grammarly API key");
 
     let source_directory = get_source_directory();
@@ -80,7 +78,7 @@ fn doc_checked<'a>(api_key: &str, doc: &'a mut FixedDoc) -> &'a mut FixedDoc {
 }
 
 fn docs_checked<'a>(api_key: &str, docs: &'a mut FixedDocs) -> &'a mut FixedDocs {
-    for (_, docs) in &mut docs.fixed {
+    for docs in docs.fixed.values_mut() {
         for doc in docs {
             let _ = doc_checked(api_key, doc);
         }
@@ -102,13 +100,7 @@ fn decimal_places(mut num: usize) -> usize {
 fn print_response(file: &str, doc: &FixedDoc) {
     let mut t = term::stdout().unwrap();
 
-    if let Some(grammarbot_io::Response::Success {
-        software,
-        warnings,
-        language,
-        matches,
-    }) = &doc.check_response
-    {
+    if let Some(grammarbot_io::Response::Success { matches, .. }) = &doc.check_response {
         for m in matches {
             // dbg!(&m);
 
@@ -128,7 +120,7 @@ fn print_response(file: &str, doc: &FixedDoc) {
             writeln!(t, "{:^width$}| ", " ", width = line_width).unwrap();
             write!(
                 t,
-                "{:^width$}| ",
+                "{line:^width$}| ",
                 line = doc.span.start.line,
                 width = line_width
             )

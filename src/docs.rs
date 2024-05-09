@@ -28,7 +28,7 @@ pub struct Docs(pub HashMap<String, Vec<proc_macro2::Literal>>);
 impl Docs {
     fn append(&mut self, docs: Docs) {
         for (k, mut v) in docs.0 {
-            self.0.entry(k).or_insert_with(Vec::new).append(&mut v);
+            self.0.entry(k).or_default().append(&mut v);
         }
     }
 }
@@ -52,7 +52,7 @@ where
                     if is_doc {
                         docs.0
                             .entry(stream.0.as_ref().to_owned())
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(literal);
                     }
                 }
