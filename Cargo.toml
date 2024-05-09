@@ -19,3 +19,12 @@ grammarbot-io = "1.0"
 walkdir = "2"
 syn = "2.0"
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
+
+[linsts.rust]
+unused_imports = "warn"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+cargo = "warn"
