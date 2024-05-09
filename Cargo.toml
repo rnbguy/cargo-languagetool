@@ -13,13 +13,13 @@ categories  = [ "development-tools", "development-tools::cargo-plugins" ]
 
 [dependencies]
 clap          = { version = "4", features = [ "derive" ] }
-term          = "0.7"
-dotenv        = "0.15"
-grammarbot-io = "1.0"
-walkdir       = "2"
-syn           = "2.0"
+term          = { version = "0.7" }
+dotenv        = { version = "0.15" }
+grammarbot-io = { version = "1.0" }
+walkdir       = { version = "2" }
+syn           = { version = "2.0" }
 proc-macro2   = { version = "1.0", features = [ "span-locations" ] }
-color-eyre    = "0.6"
+color-eyre    = { version = "0.6" }
 
 [linsts.rust]
 unused_imports = "warn"
