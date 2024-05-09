@@ -24,5 +24,6 @@ jobs:
         uses: baptiste0928/cargo-install@v3
         with:
           crate: cargo-nextest
+          locked: false
       - name: Run tests
         run: cargo nextest r --no-capture
