@@ -6,6 +6,7 @@ use cargo_grammarly::{Docs, FixedDoc, FixedDocs};
 const ENVIRONMENT_VARIABLE_NAME: &str = "GRAMMARLY_API_KEY";
 
 use clap::Parser;
+use color_eyre::Result;
 
 #[derive(Parser)]
 #[command(name = "cargo-grammarly")]
@@ -15,7 +16,9 @@ struct App {
     api_key: Option<String>,
 }
 
-fn main() {
+fn main() -> Result<()> {
+    color_eyre::install()?;
+
     let app = App::parse();
 
     dotenv::dotenv().ok();
@@ -27,6 +30,8 @@ fn main() {
 
     let source_directory = get_source_directory();
     check_grammar(&api_key, &fetch_docs(&source_directory));
+
+    Ok(())
 }
 
 fn get_source_directory() -> String {

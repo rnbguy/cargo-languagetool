@@ -19,6 +19,7 @@ grammarbot-io = "1.0"
 walkdir = "2"
 syn = "2.0"
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
+color-eyre = "0.6"
 
 [linsts.rust]
 unused_imports = "warn"
