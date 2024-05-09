@@ -2,6 +2,7 @@
 //! Use wisely.
 
 mod doc;
+mod utils;
 
 use doc::{Docs, FixedDoc, FixedDocs};
 
@@ -85,17 +86,6 @@ fn docs_checked<'a>(api_key: &str, docs: &'a mut FixedDocs) -> &'a mut FixedDocs
     docs
 }
 
-const fn decimal_places(mut num: usize) -> usize {
-    let mut places = 1;
-
-    while num % 10 > 1 {
-        num /= 10;
-        places += 1;
-    }
-
-    places
-}
-
 fn print_response(file: &str, doc: &FixedDoc) -> Result<()> {
     let mut t = term::stdout().context("Failed to get stdout")?;
 
@@ -103,7 +93,7 @@ fn print_response(file: &str, doc: &FixedDoc) -> Result<()> {
         for m in matches {
             // dbg!(&m);
 
-            let line_width = decimal_places(doc.span.start.line) + 2;
+            let line_width = utils::decimal_places(doc.span.start.line) + 2;
 
             t.attr(term::Attr::Bold)?;
             t.fg(term::color::RED)?;

@@ -23,7 +23,6 @@ color-eyre    = { version = "0.6" }
 
 [lints.rust]
 unused_imports = "warn"
-unused_crate_dependencies = "warn"
 
 [lints.clippy]
 all      = "warn"
