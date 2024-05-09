@@ -26,7 +26,7 @@ use std::collections::HashMap;
 pub struct Docs(pub HashMap<String, Vec<proc_macro2::Literal>>);
 
 impl Docs {
-    fn append(&mut self, docs: Docs) {
+    fn append(&mut self, docs: Self) {
         for (k, mut v) in docs.0 {
             self.0.entry(k).or_default().append(&mut v);
         }
@@ -37,16 +37,16 @@ impl<T> From<(T, proc_macro2::TokenStream)> for Docs
 where
     T: AsRef<str>,
 {
-    fn from(stream: (T, proc_macro2::TokenStream)) -> Docs {
+    fn from(stream: (T, proc_macro2::TokenStream)) -> Self {
         use proc_macro2::TokenTree;
 
-        let mut docs = Docs(HashMap::new());
+        let mut docs = Self(HashMap::new());
         let mut is_doc = false;
         for tree in stream.1 {
             match tree {
                 TokenTree::Ident(ident) => is_doc = ident == "doc",
                 TokenTree::Group(group) => {
-                    docs.append(Docs::from((stream.0.as_ref().to_owned(), group.stream())))
+                    docs.append(Self::from((stream.0.as_ref().to_owned(), group.stream())));
                 }
                 TokenTree::Literal(literal) => {
                     if is_doc {
@@ -70,8 +70,8 @@ pub struct FixedDocPos {
 }
 
 impl From<proc_macro2::LineColumn> for FixedDocPos {
-    fn from(span: proc_macro2::LineColumn) -> FixedDocPos {
-        FixedDocPos {
+    fn from(span: proc_macro2::LineColumn) -> Self {
+        Self {
             line: span.line,
             column: span.column,
         }
@@ -85,8 +85,8 @@ pub struct FixedDocSpan {
 }
 
 impl From<proc_macro2::Span> for FixedDocSpan {
-    fn from(span: proc_macro2::Span) -> FixedDocSpan {
-        FixedDocSpan {
+    fn from(span: proc_macro2::Span) -> Self {
+        Self {
             start: span.start().into(),
             end: span.end().into(),
         }
@@ -120,7 +120,7 @@ fn fix_string(s: &str) -> String {
 // impl<T> From<T> for FixedDocs where T: AsRef<Docs> {
 //     fn from(original: T) -> FixedDocs {
 impl From<Docs> for FixedDocs {
-    fn from(original: Docs) -> FixedDocs {
+    fn from(original: Docs) -> Self {
         // let mut fixed = Docs(HashMap::new());
         // let mut mappings = Vec::new();
         // let original = original.as_ref();
@@ -147,7 +147,7 @@ impl From<Docs> for FixedDocs {
 
                     // If the lines are consecutive, then these two doc comments belong to a single block.
                     if current.span.start.line - last.span.end.line == 1 {
-                        last.text.push_str(&format!(" {}", fixed_string));
+                        last.text.push_str(&format!(" {fixed_string}"));
                         last.span.end = current.span.end;
                     } else {
                         fixed_docs.push(current);
@@ -156,7 +156,7 @@ impl From<Docs> for FixedDocs {
             }
         }
 
-        FixedDocs {
+        Self {
             original,
             fixed,
             // mappings,

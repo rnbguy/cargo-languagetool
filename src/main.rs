@@ -1,8 +1,7 @@
 //! This main module for cargo grammar checking.
 //! Use wisely.
 
-mod docs;
-use docs::{Docs, FixedDoc, FixedDocs};
+use cargo_grammarly::{Docs, FixedDoc, FixedDocs};
 
 const ENVIRONMENT_VARIABLE_NAME: &str = "GRAMMARLY_API_KEY";
 
@@ -43,7 +42,10 @@ fn fetch_docs(dir: &str) -> Vec<Docs> {
     // dbg!(dir);
 
     let is_rs = |e: &walkdir::DirEntry| -> bool {
-        e.file_type().is_file() && e.path().to_str().unwrap().ends_with(".rs")
+        e.file_type().is_file()
+            && std::path::Path::new(e.path().to_str().unwrap())
+                .extension()
+                .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
     };
     let parse_docs = |path: &String| -> Docs {
         use std::fs;
@@ -86,7 +88,7 @@ fn docs_checked<'a>(api_key: &str, docs: &'a mut FixedDocs) -> &'a mut FixedDocs
     docs
 }
 
-fn decimal_places(mut num: usize) -> usize {
+const fn decimal_places(mut num: usize) -> usize {
     let mut places = 1;
 
     while num % 10 > 1 {
