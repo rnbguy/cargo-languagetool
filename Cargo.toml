@@ -1,21 +1,15 @@
 [package]
 name = "cargo-grammarly"
 version = "0.1.2"
-authors = ["Victor Polevoy <fx@thefx.co>"]
+authors = ["Ranadeep Biswas <mail@rnbguy.at>"]
 readme = "README.md"
-repository = "https://github.com/vityafx/cargo-grammarly"
-homepage = "https://github.com/vityafx/cargo-grammarly"
+repository = "https://github.com/rnbguy/cargo-grammarly"
+homepage = "https://github.com/rnbguy/cargo-grammarly"
 license = "MIT/Apache-2.0"
 description = "A third-party cargo extension for checking grammar in the documentation and comments."
-edition = "2018"
+edition = "2021"
 keywords = ["grammar", "english", "api", "request", "language"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
-
-[badges]
-travis-ci = { repository = "vityafx/cargo-grammarly" }
-
-[[bin]]
-name = "cargo-grammarly"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
