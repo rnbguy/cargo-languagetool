@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+use clap::{Args, Parser};
 use color_eyre::Result;
 
 use crate::utils::{check_grammar, fetch_docs};
 
-#[derive(Parser)]
+#[derive(Args)]
 #[command(version, about)]
-pub struct App {
+pub struct LanguageTool {
     #[clap(
         short,
         long,
@@ -23,11 +23,20 @@ pub struct App {
     path: PathBuf,
 }
 
-impl App {
-    pub async fn run(&self) -> Result<()> {
-        let server = languagetool_rust::ServerClient::new(&self.addr, &self.port);
+#[derive(Parser)]
+#[command(name = "cargo")]
+#[command(bin_name = "cargo")]
+pub enum CargoCli {
+    Languagetool(LanguageTool),
+}
 
-        check_grammar(&server, &fetch_docs(&self.path)?).await?;
+impl CargoCli {
+    pub async fn run(&self) -> Result<()> {
+        let Self::Languagetool(cmd) = self;
+
+        let server = languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port);
+
+        check_grammar(&server, &fetch_docs(&cmd.path)?).await?;
 
         Ok(())
     }
