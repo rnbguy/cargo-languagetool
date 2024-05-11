@@ -13,7 +13,6 @@ categories  = [ "development-tools", "development-tools::cargo-plugins" ]
 
 [dependencies]
 clap              = { version = "4", features = [ "derive" ] }
-term              = { version = "0.7" }
 dotenv            = { version = "0.15" }
 walkdir           = { version = "2" }
 syn               = { version = "2.0" }
