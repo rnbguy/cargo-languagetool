@@ -10,7 +10,7 @@ pub struct App {
         short,
         long,
         env = "LT_ADDR",
-        default_value = "https://api.languagetoolplus.com/v2"
+        default_value = "https://api.languagetoolplus.com"
     )]
     addr: String,
 
