@@ -26,11 +26,11 @@ pub struct LanguageTool {
 #[derive(Parser)]
 #[command(name = "cargo")]
 #[command(bin_name = "cargo")]
-pub enum CargoCli {
+pub enum Cargo {
     Languagetool(LanguageTool),
 }
 
-impl CargoCli {
+impl Cargo {
     pub async fn run(&self) -> Result<()> {
         let Self::Languagetool(cmd) = self;
 
