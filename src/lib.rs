@@ -1,33 +1,36 @@
 //! This main module for cargo grammar checking.
-//! Use wisely.
+//! Use wisel.
 
 mod doc;
 mod utils;
 
 use doc::{Docs, FixedDoc, FixedDocs};
 
-const ENVIRONMENT_VARIABLE_NAME: &str = "GRAMMARLY_API_KEY";
-
 use clap::Parser;
 use color_eyre::{eyre::ContextCompat, Result};
 
 #[derive(Parser)]
-#[command(name = "cargo-grammarly")]
-#[command(version, about)]
+#[command(name = "cargo-language-tool", version, about)]
 pub struct App {
-    #[clap(short, long, value_name = "API_KEY")]
-    api_key: Option<String>,
+    #[clap(
+        short,
+        long,
+        env = "LT_ADDR",
+        default_value = "https://api.languagetoolplus.com/v2"
+    )]
+    addr: String,
+
+    #[clap(short, long, env = "LT_PORT", default_value = "")]
+    port: String,
 }
 
 impl App {
-    pub fn run(&self) -> Result<()> {
-        let api_key = dbg!(std::env::var(ENVIRONMENT_VARIABLE_NAME)
-            .ok()
-            .or_else(|| self.api_key.clone())
-            .context("API key is not provided")?);
-
+    pub async fn run(&self) -> Result<()> {
         let source_directory = format!("{}/src", std::env::var("PWD")?);
-        check_grammar(&api_key, &fetch_docs(&source_directory)?)?;
+
+        let server = languagetool_rust::ServerClient::new(&self.addr, &self.port);
+
+        check_grammar(&server, &fetch_docs(&source_directory)?).await?;
 
         Ok(())
     }
@@ -69,27 +72,26 @@ fn fetch_docs(dir: &str) -> Result<Vec<Docs>> {
         .collect::<Result<_>>()
 }
 
-fn doc_checked<'a>(api_key: &str, doc: &'a mut FixedDoc) -> &'a mut FixedDoc {
-    doc.check_response = grammarbot_io::Request::from(&doc.text)
-        .api_key(api_key)
-        .send()
-        .ok();
-    doc
+async fn doc_checked<'a>(server: &languagetool_rust::ServerClient, doc: &'a mut FixedDoc) {
+    let check_request = languagetool_rust::CheckRequest::default()
+        .with_text(doc.text.clone())
+        .with_language("en-US".to_owned());
+
+    doc.check_response = server.check(&check_request).await.ok();
 }
 
-fn docs_checked<'a>(api_key: &str, docs: &'a mut FixedDocs) -> &'a mut FixedDocs {
+async fn docs_checked<'a>(server: &languagetool_rust::ServerClient, docs: &'a mut FixedDocs) {
     for docs in docs.fixed.values_mut() {
         for doc in docs {
-            let _ = doc_checked(api_key, doc);
+            doc_checked(server, doc).await;
         }
     }
-    docs
 }
 
 fn print_response(file: &str, doc: &FixedDoc) -> Result<()> {
     let mut t = term::stdout().context("Failed to get stdout")?;
 
-    if let Some(grammarbot_io::Response::Success { matches, .. }) = &doc.check_response {
+    if let Some(languagetool_rust::CheckResponse { matches, .. }) = &doc.check_response {
         for m in matches {
             // dbg!(&m);
 
@@ -140,7 +142,7 @@ fn print_docs(docs: &mut FixedDocs) -> Result<()> {
     Ok(())
 }
 
-fn check_grammar(api_key: &str, docs: &[Docs]) -> Result<()> {
+async fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Docs]) -> Result<()> {
     // dbg!(api_key);
     // dbg!(docs);
     let mut docs_for_grammarly: Vec<FixedDocs> = docs
@@ -148,10 +150,8 @@ fn check_grammar(api_key: &str, docs: &[Docs]) -> Result<()> {
         .map(|d| FixedDocs::try_from(d.clone()))
         .collect::<Result<_>>()?;
     // dbg!(&docs_for_grammarly);
-    for doc in docs_for_grammarly
-        .iter_mut()
-        .map(|d| docs_checked(api_key, d))
-    {
+    for doc in &mut docs_for_grammarly {
+        docs_checked(server, doc).await;
         print_docs(doc)?;
     }
 

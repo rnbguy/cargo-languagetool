@@ -1,9 +1,10 @@
 use clap::Parser;
 use color_eyre::Result;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     color_eyre::install()?;
     dotenv::dotenv().ok();
 
-    cargo_grammarly::App::parse().run()
+    cargo_grammarly::App::parse().run().await
 }

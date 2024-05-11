@@ -57,7 +57,7 @@ where
                             .push(literal);
                     }
                 }
-                TokenTree::Punct(_) => todo!(),
+                TokenTree::Punct(_) => {}
             };
         }
         docs
@@ -99,7 +99,7 @@ impl From<proc_macro2::Span> for FixedDocSpan {
 pub struct FixedDoc {
     pub text: String,
     pub span: FixedDocSpan,
-    pub check_response: Option<grammarbot_io::Response>,
+    pub check_response: Option<languagetool_rust::CheckResponse>,
 }
 
 #[derive(Debug, Clone)]
