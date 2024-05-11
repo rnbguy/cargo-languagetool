@@ -10,7 +10,7 @@ use clap::Parser;
 use color_eyre::{eyre::ContextCompat, Result};
 
 #[derive(Parser)]
-#[command(name = "cargo-language-tool", version, about)]
+#[command(version, about)]
 pub struct App {
     #[clap(
         short,

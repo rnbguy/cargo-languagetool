@@ -6,5 +6,5 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
     dotenv::dotenv().ok();
 
-    cargo_grammarly::App::parse().run().await
+    cargo_languagetool::App::parse().run().await
 }
