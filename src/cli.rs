@@ -1,7 +1,7 @@
 use clap::Parser;
+use color_eyre::Result;
 
 use crate::utils::{check_grammar, fetch_docs};
-use color_eyre::Result;
 
 #[derive(Parser)]
 #[command(version, about)]

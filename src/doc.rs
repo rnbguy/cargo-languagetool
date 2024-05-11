@@ -1,7 +1,9 @@
 //! The docs module contains all the necessary stuff to work with doc comments.
 
-use color_eyre::{eyre::ContextCompat, Report, Result};
 use std::collections::HashMap;
+
+use color_eyre::eyre::ContextCompat;
+use color_eyre::{Report, Result};
 
 // Ideally error should be printed that way:
 //

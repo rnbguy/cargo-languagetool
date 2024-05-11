@@ -1,6 +1,7 @@
-use crate::doc::{Docs, FixedDoc, FixedDocs};
+use color_eyre::eyre::ContextCompat;
+use color_eyre::Result;
 
-use color_eyre::{eyre::ContextCompat, Result};
+use crate::doc::{Docs, FixedDoc, FixedDocs};
 
 /// Reads the .rs files in the directory recursively.
 pub fn fetch_docs(dir: &str) -> Result<Vec<Docs>> {
