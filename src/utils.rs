@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 
 use crate::doc::{Docs, FixedDoc, FixedDocs};
 
 /// Reads the .rs files in the directory recursively.
-pub fn fetch_docs(dir: &str) -> Result<Vec<Docs>> {
+pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
     use proc_macro2::TokenStream;
 
     // dbg!(dir);
@@ -85,6 +87,8 @@ pub async fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Doc
         docs_checked(server, &mut fixed_doc).await?;
         print_docs(&fixed_doc)?;
     }
+
+    println!("Checked {} files.", docs.len());
 
     Ok(())
 }
