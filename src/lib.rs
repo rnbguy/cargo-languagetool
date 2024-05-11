@@ -1,5 +1,4 @@
-//! This main module for cargo grammar checking.
-//! Use wisel.
+//! This main module for cargo grammar checking. Use wisely.
 
 pub mod cli;
 pub mod doc;

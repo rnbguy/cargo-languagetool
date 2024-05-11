@@ -1,4 +1,4 @@
-//! The docs module contains all the necessary stuff to work with doc comments.
+//! The `docs` module contains all the necessary stuff to work with doc comments.
 
 use std::collections::HashMap;
 
