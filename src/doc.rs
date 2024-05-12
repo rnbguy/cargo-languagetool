@@ -112,8 +112,8 @@ pub struct FixedDocs {
 }
 
 fn fix_string(s: &str) -> String {
-    s.replace("///", "")
-        .replace("//!", "")
+    s.replace("/// ", "")
+        .replace("//! ", "")
         .replace(r#"\""#, r#"""#)
         .trim_matches('\"')
         .trim()
@@ -150,7 +150,7 @@ impl TryFrom<Docs> for FixedDocs {
 
                     // If the lines are consecutive, then these two doc comments belong to a single block.
                     if current.span.start.line - last.span.end.line == 1 {
-                        last.text.push_str(&format!(" {fixed_string}"));
+                        last.text.push_str(&format!("\n{fixed_string}"));
                         last.span.end = current.span.end;
                     } else {
                         fixed_docs.push(current);
