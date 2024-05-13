@@ -70,10 +70,84 @@ async fn docs_checked(
 /// Pretty-printer.
 fn print_docs(docs: &FixedDocs) -> Result<()> {
     for (file, docs) in &docs.fixed {
+        let file_str = std::fs::read_to_string(file)?;
         for doc in docs {
             let check_response = doc.check_response.as_ref().context("No check response")?;
             if !check_response.matches.is_empty() {
-                println!("{}", check_response.annotate(&doc.text, Some(file), true));
+                println!("{}", check_response.annotate(&file_str, Some(file), true));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
+    for (file, docs) in &mut docs.fixed {
+        for doc in docs {
+            let doc_str = doc.formatted_string();
+            let check_response = doc.check_response.as_mut().context("No check response")?;
+            for each_match in &mut check_response.matches {
+                let file_str = std::fs::read_to_string(file)?;
+
+                assert_eq!(each_match.length, each_match.context.length);
+
+                let context_offset = each_match.context.offset; // this gets changed too
+                let context_text = &each_match.context.text; // this gets trims
+
+                let length = each_match.context.length; // stays same
+                let offset = each_match.offset; // this changes
+
+                let row = doc_str.chars().take(offset).filter(|&c| c == '\n').count();
+
+                let (line, span) = &doc.text[row];
+
+                let splits = doc_str.splitn(row + 1, '\n').collect::<Vec<_>>();
+                let line_offset = offset
+                    - row
+                    - splits
+                        .iter()
+                        .rev()
+                        .skip(1)
+                        .map(|st| st.len())
+                        .sum::<usize>();
+
+                let line_row = span.start.line;
+                let line_offset = span.start.column + 3 + line_offset;
+                let line_begin_offset = line_row - 1
+                    + file_str
+                        .lines()
+                        .take(line_row - 1)
+                        .map(str::len)
+                        .sum::<usize>();
+
+                let line_length = file_str.lines().nth(line_row - 1).unwrap().len();
+
+                let context_text = context_text
+                    .strip_prefix("...")
+                    .unwrap_or(context_text)
+                    .strip_suffix("...")
+                    .unwrap_or(context_text);
+                let context_length = context_text.len();
+
+                let new_context_offset = line_offset;
+
+                let new_context_length = if line_length < new_context_offset + context_length {
+                    line_length
+                } else {
+                    context_length
+                };
+
+                // updating value
+                each_match.offset = line_begin_offset + line_offset; // this changes
+
+                each_match.context.offset = new_context_offset; // this gets changed too
+
+                file_str[line_begin_offset + line_offset - new_context_offset..]
+                    [..new_context_length]
+                    .clone_into(&mut each_match.context.text); // this gets trims
+
+                // let length = each_match.context.length; // stays same
             }
         }
     }
@@ -85,6 +159,7 @@ pub async fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Doc
     for doc in docs {
         let mut fixed_doc = FixedDocs::try_from(doc.clone())?;
         docs_checked(server, &mut fixed_doc).await?;
+        transform_matches(&mut fixed_doc)?;
         print_docs(&fixed_doc)?;
     }
 
