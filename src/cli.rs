@@ -27,12 +27,13 @@ pub struct LanguageTool {
 #[command(name = "cargo")]
 #[command(bin_name = "cargo")]
 pub enum Cargo {
-    Languagetool(LanguageTool),
+    #[clap(name = "languagetool")]
+    LanguageTool(LanguageTool),
 }
 
 impl Cargo {
     pub async fn run(&self) -> Result<()> {
-        let Self::Languagetool(cmd) = self;
+        let Self::LanguageTool(cmd) = self;
 
         let server = languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port);
 
