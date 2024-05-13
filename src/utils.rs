@@ -46,7 +46,7 @@ async fn doc_checked<'a>(
     doc: &'a mut FixedDoc,
 ) -> Result<()> {
     let check_request = languagetool_rust::CheckRequest::default()
-        .with_text(doc.text.clone())
+        .with_text(doc.formatted_string())
         .with_language("en-US".to_owned());
 
     doc.check_response = Some(server.check(&check_request).await?);
@@ -54,9 +54,9 @@ async fn doc_checked<'a>(
     Ok(())
 }
 
-async fn docs_checked<'a>(
+async fn docs_checked(
     server: &languagetool_rust::ServerClient,
-    docs: &'a mut FixedDocs,
+    docs: &mut FixedDocs,
 ) -> Result<()> {
     for docs in docs.fixed.values_mut() {
         for doc in docs {
