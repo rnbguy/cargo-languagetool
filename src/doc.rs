@@ -123,14 +123,14 @@ pub struct FixedDocs {
     // mappings: Vec<usize>,
 }
 
-fn fix_string(s: &str) -> String {
-    s.replace("/// ", "")
-        .replace("//! ", "")
-        .replace(r#"\""#, r#"""#)
-        .trim_matches('\"')
-        .trim()
-        .to_owned()
-}
+// fn fix_string(s: &str) -> String {
+//     s.replace("/// ", "")
+//         .replace("//! ", "")
+//         .replace(r#"\""#, r#"""#)
+//         .trim_matches('\"')
+//         .trim()
+//         .to_owned()
+// }
 
 // impl<T> From<T> for FixedDocs where T: AsRef<Docs> {
 //     fn from(original: T) -> FixedDocs {
