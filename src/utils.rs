@@ -90,18 +90,16 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
 
                 assert_eq!(each_match.length, each_match.context.length);
 
-                let context_offset = each_match.context.offset; // this gets changed too
-                let context_text = &each_match.context.text; // this gets trims
+                let row = doc_str
+                    .chars()
+                    .take(each_match.offset)
+                    .filter(|&c| c == '\n')
+                    .count();
 
-                let length = each_match.context.length; // stays same
-                let offset = each_match.offset; // this changes
-
-                let row = doc_str.chars().take(offset).filter(|&c| c == '\n').count();
-
-                let (line, span) = &doc.text[row];
+                let (_line, span) = &doc.text[row];
 
                 let splits = doc_str.splitn(row + 1, '\n').collect::<Vec<_>>();
-                let line_offset = offset
+                let line_offset = each_match.offset
                     - row
                     - splits
                         .iter()
@@ -121,11 +119,13 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
 
                 let line_length = file_str.lines().nth(line_row - 1).unwrap().len();
 
-                let context_text = context_text
-                    .strip_prefix("...")
-                    .unwrap_or(context_text)
-                    .strip_suffix("...")
-                    .unwrap_or(context_text);
+                // let context_text = each_match
+                //     .context
+                //     .text
+                //     .strip_prefix("...")
+                //     .unwrap_or(context_text)
+                //     .strip_suffix("...")
+                //     .unwrap_or(context_text);
 
                 // TODO: can we only use the context provided in match?
                 let new_context_length = line_length;
