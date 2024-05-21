@@ -128,9 +128,8 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                     .unwrap_or(context_text);
                 let context_length = context_text.len();
 
-                let new_context_offset = line_offset;
-
-                let new_context_length = if line_length < new_context_offset + context_length {
+                // TODO: bit hacky
+                let new_context_length = if line_length < line_offset + context_length {
                     line_length
                 } else {
                     context_length
@@ -139,10 +138,9 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                 // updating value
                 each_match.offset = line_begin_offset + line_offset; // this changes
 
-                each_match.context.offset = new_context_offset; // this gets changed too
+                each_match.context.offset = line_offset; // this gets changed too
 
-                file_str[line_begin_offset + line_offset - new_context_offset..]
-                    [..new_context_length]
+                file_str[line_begin_offset..][..new_context_length]
                     .clone_into(&mut each_match.context.text); // this gets trims
 
                 // let length = each_match.context.length; // stays same
