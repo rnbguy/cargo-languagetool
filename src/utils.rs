@@ -44,7 +44,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
 
 fn doc_checked(server: &languagetool_rust::ServerClient, doc: &mut FixedDoc) -> Result<()> {
     let check_request = languagetool_rust::CheckRequest::default()
-        .with_text(doc.formatted_string())
+        .with_text(doc.to_string())
         .with_language("en-US".to_owned());
 
     let rt = tokio::runtime::Runtime::new()?;
@@ -83,7 +83,7 @@ fn print_docs(docs: &FixedDocs) -> Result<()> {
 fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
     for (file, docs) in &mut docs.fixed {
         for doc in docs {
-            let doc_str = doc.formatted_string();
+            let doc_str = doc.to_string();
             let check_response = doc.check_response.as_mut().context("No check response")?;
             for each_match in &mut check_response.matches {
                 let file_str = std::fs::read_to_string(file)?;

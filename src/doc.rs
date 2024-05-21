@@ -103,16 +103,16 @@ pub struct FixedDoc {
     pub check_response: Option<languagetool_rust::CheckResponse>,
 }
 
-impl FixedDoc {
-    pub fn formatted_string(&self) -> String {
-        let strings: Vec<_> = self
-            .text
-            .iter()
-            .map(|(fixed_string, _)| fixed_string)
-            .cloned()
-            .collect();
-
-        strings.join("\n")
+impl std::fmt::Display for FixedDoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut iter = self.text.iter();
+        if let Some((first_string, _)) = iter.next() {
+            write!(f, "{first_string}")?;
+            for (fixed_string, _) in iter {
+                write!(f, "\n{fixed_string}")?;
+            }
+        }
+        Ok(())
     }
 }
 
