@@ -19,8 +19,8 @@ pub struct LanguageTool {
     #[clap(short, long, env = "LT_PORT", default_value = "")]
     port: String,
 
-    #[clap(long, default_value = ".")]
-    path: PathBuf,
+    #[clap(default_value = ".")]
+    paths: Vec<PathBuf>,
 }
 
 #[derive(Parser)]
@@ -38,7 +38,18 @@ impl Cargo {
         let server =
             languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port).with_max_suggestions(5);
 
-        check_grammar(&server, &fetch_docs(&cmd.path)?)?;
+        let docs_result: Result<Vec<_>> =
+            cmd.paths
+                .iter()
+                .map(fetch_docs)
+                .try_fold(Vec::new(), |mut acc, docs_result| {
+                    acc.extend(docs_result?);
+                    Ok(acc)
+                });
+
+        let docs = docs_result?;
+
+        check_grammar(&server, &docs)?;
 
         println!("Checked {} files.", docs.len());
 
