@@ -126,14 +126,9 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                     .unwrap_or(context_text)
                     .strip_suffix("...")
                     .unwrap_or(context_text);
-                let context_length = context_text.len();
 
-                // TODO: bit hacky
-                let new_context_length = if line_length < line_offset + context_length {
-                    line_length
-                } else {
-                    context_length
-                };
+                // TODO: can we only use the context provided in match?
+                let new_context_length = line_length;
 
                 // updating value
                 each_match.offset = line_begin_offset + line_offset; // this changes
