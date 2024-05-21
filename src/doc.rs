@@ -1,11 +1,9 @@
 //! The `docs` module contains all the necessary stuff to work with doc comments.
 
 use std::collections::HashMap;
-use std::string;
 
-use color_eyre::eyre::{bail, ContextCompat};
+use color_eyre::eyre::ContextCompat;
 use color_eyre::{Report, Result};
-use proc_macro2::Literal;
 
 // Ideally error should be printed that way:
 //
