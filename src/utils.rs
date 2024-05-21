@@ -42,7 +42,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
         .collect::<Result<_>>()
 }
 
-fn doc_checked<'a>(server: &languagetool_rust::ServerClient, doc: &'a mut FixedDoc) -> Result<()> {
+fn doc_checked(server: &languagetool_rust::ServerClient, doc: &mut FixedDoc) -> Result<()> {
     let check_request = languagetool_rust::CheckRequest::default()
         .with_text(doc.formatted_string())
         .with_language("en-US".to_owned());
