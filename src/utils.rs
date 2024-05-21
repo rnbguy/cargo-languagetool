@@ -143,6 +143,13 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                 file_str[line_begin_offset..][..new_context_length]
                     .clone_into(&mut each_match.context.text); // this gets trims
 
+                // clamp the match length if it exceeds the line length
+                let new_length =
+                    core::cmp::min(new_context_length - line_offset, each_match.length);
+
+                each_match.length = new_length; // this changes
+                each_match.context.length = new_length; // this gets changed too
+
                 // let length = each_match.context.length; // stays same
             }
         }
