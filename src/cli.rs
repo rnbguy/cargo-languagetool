@@ -11,12 +11,12 @@ pub struct LanguageTool {
     #[clap(
         short,
         long,
-        env = "LT_ADDR",
+        env = "LANGUAGETOOL_HOSTNAME",
         default_value = "https://api.languagetoolplus.com"
     )]
-    addr: String,
+    hostname: String,
 
-    #[clap(short, long, env = "LT_PORT", default_value = "")]
+    #[clap(short, long, env = "LANGUAGETOOL_PORT", default_value = "")]
     port: String,
 
     #[clap(default_value = ".")]
@@ -36,7 +36,7 @@ impl Cargo {
         let Self::LanguageTool(cmd) = self;
 
         let server =
-            languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port).with_max_suggestions(5);
+            languagetool_rust::ServerClient::new(&cmd.hostname, &cmd.port).with_max_suggestions(5);
 
         let docs_result: Result<Vec<_>> =
             cmd.paths
