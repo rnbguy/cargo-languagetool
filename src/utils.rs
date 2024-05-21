@@ -161,7 +161,5 @@ pub fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Docs]) ->
         print_docs(&fixed_doc)?;
     }
 
-    println!("Checked {} files.", docs.len());
-
     Ok(())
 }

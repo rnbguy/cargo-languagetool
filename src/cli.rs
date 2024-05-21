@@ -40,6 +40,8 @@ impl Cargo {
 
         check_grammar(&server, &fetch_docs(&cmd.path)?)?;
 
+        println!("Checked {} files.", docs.len());
+
         Ok(())
     }
 }
