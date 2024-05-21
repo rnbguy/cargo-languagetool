@@ -41,26 +41,22 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
         .collect::<Result<_>>()
 }
 
-async fn doc_checked<'a>(
-    server: &languagetool_rust::ServerClient,
-    doc: &'a mut FixedDoc,
-) -> Result<()> {
+fn doc_checked<'a>(server: &languagetool_rust::ServerClient, doc: &'a mut FixedDoc) -> Result<()> {
     let check_request = languagetool_rust::CheckRequest::default()
         .with_text(doc.formatted_string())
         .with_language("en-US".to_owned());
 
-    doc.check_response = Some(server.check(&check_request).await?);
+    let rt = tokio::runtime::Runtime::new()?;
+
+    doc.check_response = Some(rt.block_on(async { server.check(&check_request).await })?);
 
     Ok(())
 }
 
-async fn docs_checked(
-    server: &languagetool_rust::ServerClient,
-    docs: &mut FixedDocs,
-) -> Result<()> {
+fn docs_checked(server: &languagetool_rust::ServerClient, docs: &mut FixedDocs) -> Result<()> {
     for docs in docs.fixed.values_mut() {
         for doc in docs {
-            doc_checked(server, doc).await?;
+            doc_checked(server, doc)?;
         }
     }
 
@@ -155,10 +151,10 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
     Ok(())
 }
 
-pub async fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Docs]) -> Result<()> {
+pub fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Docs]) -> Result<()> {
     for doc in docs {
         let mut fixed_doc = FixedDocs::try_from(doc.clone())?;
-        docs_checked(server, &mut fixed_doc).await?;
+        docs_checked(server, &mut fixed_doc)?;
         transform_matches(&mut fixed_doc)?;
         print_docs(&fixed_doc)?;
     }

@@ -32,12 +32,12 @@ pub enum Cargo {
 }
 
 impl Cargo {
-    pub async fn run(&self) -> Result<()> {
+    pub fn run(&self) -> Result<()> {
         let Self::LanguageTool(cmd) = self;
 
         let server = languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port);
 
-        check_grammar(&server, &fetch_docs(&cmd.path)?).await?;
+        check_grammar(&server, &fetch_docs(&cmd.path)?)?;
 
         Ok(())
     }
