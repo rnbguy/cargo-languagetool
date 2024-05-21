@@ -35,7 +35,8 @@ impl Cargo {
     pub fn run(&self) -> Result<()> {
         let Self::LanguageTool(cmd) = self;
 
-        let server = languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port);
+        let server =
+            languagetool_rust::ServerClient::new(&cmd.addr, &cmd.port).with_max_suggestions(5);
 
         check_grammar(&server, &fetch_docs(&cmd.path)?)?;
 
