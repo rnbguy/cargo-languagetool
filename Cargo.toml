@@ -21,6 +21,8 @@ color-eyre        = { version = "0.6" }
 languagetool-rust = { version = "2.1.4" }
 tokio             = { version = "1.37.0", default-features = false }
 serde_json        = { version = "1.0.117" }
+env_logger        = { version = "0.11.3" }
+log               = { version = "0.4.21" }
 
 [lints.rust]
 unused_imports = "warn"

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
+use log::debug;
 
 use crate::doc::{Docs, FixedDoc, FixedDocs};
 
@@ -70,6 +71,7 @@ fn print_docs(docs: &FixedDocs) -> Result<()> {
         for doc in docs {
             let check_response = doc.check_response.as_ref().context("No check response")?;
             if !check_response.matches.is_empty() {
+                debug!("Annotating: {}", file);
                 println!("{}", check_response.annotate(&file_str, Some(file), true));
             }
         }
