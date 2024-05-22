@@ -10,6 +10,21 @@ use crate::{
 
 #[derive(Parser)]
 pub struct Config {
+    #[clap(
+        short,
+        long,
+        env = "LANGUAGETOOL_HOSTNAME",
+        default_value = "https://api.languagetoolplus.com"
+    )]
+    pub hostname: String,
+    #[clap(short, long, env = "LANGUAGETOOL_PORT")]
+    pub port: Option<String>,
+
+    #[clap(short, long, env = "LANGUAGETOOL_USERNAME")]
+    pub username: Option<String>,
+    #[clap(short, long, env = "LANGUAGETOOL_API_KEY")]
+    pub api_key: Option<String>,
+
     #[clap(long)]
     pub disable_categories: Vec<Categories>,
     #[clap(long)]
@@ -33,17 +48,6 @@ pub struct Config {
 #[derive(Args)]
 #[command(version, about)]
 pub struct LanguageTool {
-    #[clap(
-        short,
-        long,
-        env = "LANGUAGETOOL_HOSTNAME",
-        default_value = "https://api.languagetoolplus.com"
-    )]
-    hostname: String,
-
-    #[clap(short, long, env = "LANGUAGETOOL_PORT", default_value = "")]
-    port: String,
-
     #[clap(default_value = ".")]
     paths: Vec<PathBuf>,
 
@@ -63,8 +67,11 @@ impl Cargo {
     pub fn run(&self) -> Result<()> {
         let Self::LanguageTool(cmd) = self;
 
-        let server =
-            languagetool_rust::ServerClient::new(&cmd.hostname, &cmd.port).with_max_suggestions(5);
+        let server = languagetool_rust::ServerClient::new(
+            &cmd.config.hostname,
+            cmd.config.port.as_deref().unwrap_or(""),
+        )
+        .with_max_suggestions(5);
 
         let docs_result: Result<Vec<_>> =
             cmd.paths

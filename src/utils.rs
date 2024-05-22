@@ -53,6 +53,11 @@ fn doc_checked(
 ) -> Result<()> {
     let mut check_request = languagetool_rust::CheckRequest::default().with_text(doc.to_string());
 
+    if let (Some(username), Some(api_key)) = (&config.username, &config.api_key) {
+        check_request.username = Some(username.clone());
+        check_request.api_key = Some(api_key.clone());
+    }
+
     check_request.language.clone_from(&config.language);
 
     if config.picky {
