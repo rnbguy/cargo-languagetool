@@ -2,9 +2,13 @@ use std::path::PathBuf;
 
 use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
+use languagetool_rust::check::Level as LanguageToolLevel;
 use log::debug;
 
-use crate::doc::{Docs, FixedDoc, FixedDocs};
+use crate::{
+    cli::Config,
+    doc::{Docs, FixedDoc, FixedDocs},
+};
 
 /// Reads the .rs files in the directory recursively.
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
@@ -42,10 +46,52 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
         .collect::<Result<_>>()
 }
 
-fn doc_checked(server: &languagetool_rust::ServerClient, doc: &mut FixedDoc) -> Result<()> {
-    let check_request = languagetool_rust::CheckRequest::default()
-        .with_text(doc.to_string())
-        .with_language("en-US".to_owned());
+fn doc_checked(
+    server: &languagetool_rust::ServerClient,
+    config: &Config,
+    doc: &mut FixedDoc,
+) -> Result<()> {
+    let mut check_request = languagetool_rust::CheckRequest::default().with_text(doc.to_string());
+
+    check_request.language.clone_from(&config.language);
+
+    if config.picky {
+        check_request.level = LanguageToolLevel::Picky;
+    }
+
+    check_request.enabled_categories = Some(
+        config
+            .enable_categories
+            .iter()
+            .map(ToString::to_string)
+            .collect(),
+    );
+
+    check_request.enabled_rules = Some(
+        config
+            .enable_rules
+            .iter()
+            .map(ToString::to_string)
+            .collect(),
+    );
+
+    check_request.disabled_categories = Some(
+        config
+            .disable_categories
+            .iter()
+            .map(ToString::to_string)
+            .collect(),
+    );
+
+    check_request.disabled_rules = Some(
+        config
+            .disable_rules
+            .iter()
+            .map(ToString::to_string)
+            .collect(),
+    );
+
+    check_request.enabled_only = config.enable_only;
 
     let rt = tokio::runtime::Runtime::new()?;
 
@@ -54,10 +100,14 @@ fn doc_checked(server: &languagetool_rust::ServerClient, doc: &mut FixedDoc) -> 
     Ok(())
 }
 
-fn docs_checked(server: &languagetool_rust::ServerClient, docs: &mut FixedDocs) -> Result<()> {
+fn docs_checked(
+    server: &languagetool_rust::ServerClient,
+    config: &Config,
+    docs: &mut FixedDocs,
+) -> Result<()> {
     for docs in docs.fixed.values_mut() {
         for doc in docs {
-            doc_checked(server, doc)?;
+            doc_checked(server, config, doc)?;
         }
     }
 
@@ -153,10 +203,14 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
     Ok(())
 }
 
-pub fn check_grammar(server: &languagetool_rust::ServerClient, docs: &[Docs]) -> Result<()> {
+pub fn check_grammar(
+    server: &languagetool_rust::ServerClient,
+    config: &Config,
+    docs: &[Docs],
+) -> Result<()> {
     for doc in docs {
         let mut fixed_doc = FixedDocs::try_from(doc.clone())?;
-        docs_checked(server, &mut fixed_doc)?;
+        docs_checked(server, &config, &mut fixed_doc)?;
         transform_matches(&mut fixed_doc)?;
         print_docs(&fixed_doc)?;
     }

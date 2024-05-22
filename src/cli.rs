@@ -77,7 +77,7 @@ impl Cargo {
 
         let docs = docs_result?;
 
-        check_grammar(&server, &docs)?;
+        check_grammar(&server, &cmd.config, &docs)?;
 
         println!("Checked {} files.", docs.len());
 
