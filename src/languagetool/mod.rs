@@ -24,6 +24,9 @@ pub enum Categories {
     Typography,
     Typos,
     Wikipedia,
+    AmericanEnglishStyle,
+    NonstandardPhrases,
+    Collocations,
 }
 
 impl core::fmt::Display for Categories {
