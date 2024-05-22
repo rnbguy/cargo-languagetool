@@ -3,10 +3,8 @@ use std::path::PathBuf;
 use clap::{Args, Parser};
 use color_eyre::Result;
 
-use crate::{
-    languagetool::Categories,
-    utils::{check_grammar, fetch_docs},
-};
+use crate::languagetool::Categories;
+use crate::utils::{check_grammar, fetch_docs};
 
 #[derive(Parser)]
 pub struct Config {

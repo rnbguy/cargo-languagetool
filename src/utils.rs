@@ -5,10 +5,8 @@ use color_eyre::Result;
 use languagetool_rust::check::Level as LanguageToolLevel;
 use log::debug;
 
-use crate::{
-    cli::Config,
-    doc::{Docs, FixedDoc, FixedDocs},
-};
+use crate::cli::Config;
+use crate::doc::{Docs, FixedDoc, FixedDocs};
 
 /// Reads the .rs files in the directory recursively.
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
