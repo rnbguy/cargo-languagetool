@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use color_eyre::eyre::ContextCompat;
@@ -7,6 +8,7 @@ use log::debug;
 
 use crate::cli::Config;
 use crate::doc::{Docs, FixedDoc, FixedDocs};
+use crate::languagetool::Categories as LanguageToolCategories;
 
 /// Reads the .rs files in the directory recursively.
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
@@ -123,8 +125,30 @@ fn print_docs(docs: &FixedDocs) -> Result<()> {
         let file_str = std::fs::read_to_string(file)?;
         for doc in docs {
             let check_response = doc.check_response.as_ref().context("No check response")?;
+
             if !check_response.matches.is_empty() {
                 debug!("Annotating: {}", file);
+                debug!(
+                    "Matches: {:?}",
+                    check_response
+                        .matches
+                        .iter()
+                        .map(|m| {
+                            let rule = m.rule.clone();
+
+                            (
+                                rule.category
+                                    .id
+                                    .parse::<LanguageToolCategories>()
+                                    .expect("no error"),
+                                rule.category.name,
+                                rule.issue_type,
+                                rule.id,
+                            )
+                        })
+                        .collect::<HashSet<_>>()
+                );
+
                 println!("{}", check_response.annotate(&file_str, Some(file), true));
             }
         }
