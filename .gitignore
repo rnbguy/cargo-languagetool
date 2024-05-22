@@ -3,5 +3,6 @@ target
 *.swp
 *.md5
 *.tar
+.env
 cooked
 Cook.toml
