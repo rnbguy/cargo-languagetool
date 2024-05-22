@@ -93,9 +93,9 @@ fn doc_checked(
 
     check_request.enabled_only = config.enable_only;
 
-    let rt = tokio::runtime::Runtime::new()?;
-
-    doc.check_response = Some(rt.block_on(async { server.check(&check_request).await })?);
+    doc.check_response = Some(
+        tokio::runtime::Runtime::new()?.block_on(async { server.check(&check_request).await })?,
+    );
 
     Ok(())
 }
@@ -210,7 +210,7 @@ pub fn check_grammar(
 ) -> Result<()> {
     for doc in docs {
         let mut fixed_doc = FixedDocs::try_from(doc.clone())?;
-        docs_checked(server, &config, &mut fixed_doc)?;
+        docs_checked(server, config, &mut fixed_doc)?;
         transform_matches(&mut fixed_doc)?;
         print_docs(&fixed_doc)?;
     }
