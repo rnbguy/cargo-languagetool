@@ -9,7 +9,6 @@ use crate::utils::{check_grammar, fetch_docs};
 #[derive(Parser)]
 pub struct Config {
     #[clap(
-        short,
         long,
         env = "LANGUAGETOOL_HOSTNAME",
         default_value = "https://api.languagetoolplus.com"
