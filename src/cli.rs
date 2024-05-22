@@ -3,7 +3,32 @@ use std::path::PathBuf;
 use clap::{Args, Parser};
 use color_eyre::Result;
 
-use crate::utils::{check_grammar, fetch_docs};
+use crate::{
+    languagetool::Categories,
+    utils::{check_grammar, fetch_docs},
+};
+
+#[derive(Parser)]
+pub struct Config {
+    #[clap(long)]
+    pub disable_categories: Vec<Categories>,
+    #[clap(long)]
+    pub enable_categories: Vec<Categories>,
+
+    #[clap(long)]
+    pub disable_rules: Vec<String>,
+    #[clap(long)]
+    pub enable_rules: Vec<String>,
+
+    #[clap(long)]
+    pub enable_only: bool,
+
+    #[clap(long, default_value = "en-US")]
+    pub language: String,
+
+    #[clap(long)]
+    pub picky: bool,
+}
 
 #[derive(Args)]
 #[command(version, about)]
@@ -21,6 +46,9 @@ pub struct LanguageTool {
 
     #[clap(default_value = ".")]
     paths: Vec<PathBuf>,
+
+    #[clap(flatten)]
+    config: Config,
 }
 
 #[derive(Parser)]
