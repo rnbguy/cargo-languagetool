@@ -2,4 +2,5 @@
 
 pub mod cli;
 pub mod doc;
+pub mod languagetool;
 pub mod utils;
