@@ -194,35 +194,28 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                         .map(str::len)
                         .sum::<usize>();
 
-                let line_length = file_str.lines().nth(line_row - 1).unwrap().len();
-
-                // let context_text = each_match
-                //     .context
-                //     .text
-                //     .strip_prefix("...")
-                //     .unwrap_or(context_text)
-                //     .strip_suffix("...")
-                //     .unwrap_or(context_text);
-
-                // TODO: can we only use the context provided in match?
-                let new_context_length = line_length;
-
                 // updating value
-                each_match.offset = line_begin_offset + line_offset; // this changes
+                each_match.offset = line_begin_offset + line_offset;
 
+                // LT context starts at: each_match.offset - each_match.context.offset
+                // start the context from the same line as the beginning of the match.
                 each_match.context.offset = line_offset; // this gets changed too
 
+                // end the context at the end of the line of the end of the match.
+
+                let mut new_context_length = 0;
+
+                for line in &mut file_str.lines().skip(line_row - 1) {
+                    new_context_length += line.len();
+                    if new_context_length + line_begin_offset
+                        > each_match.offset + each_match.length
+                    {
+                        break;
+                    }
+                }
+
                 file_str[line_begin_offset..][..new_context_length]
-                    .clone_into(&mut each_match.context.text); // this gets trims
-
-                // clamp the match length if it exceeds the line length
-                let new_length =
-                    core::cmp::min(new_context_length - line_offset, each_match.length);
-
-                each_match.length = new_length; // this changes
-                each_match.context.length = new_length; // this gets changed too
-
-                // let length = each_match.context.length; // stays same
+                    .clone_into(&mut each_match.context.text);
             }
         }
     }
