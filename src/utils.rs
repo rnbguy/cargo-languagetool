@@ -175,24 +175,27 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
 
                 let (_line, span) = &doc.text[row];
 
-                let splits = doc_str.splitn(row + 1, '\n').collect::<Vec<_>>();
-                let line_offset = each_match.offset
-                    - row
-                    - splits
-                        .iter()
-                        .rev()
-                        .skip(1)
-                        .map(|st| st.len())
-                        .sum::<usize>();
+                let doc_prev_line_end_offset = doc_str
+                    .lines()
+                    .take(row)
+                    .map(|st| st.len() + 1) // because of extra space
+                    .sum::<usize>();
+
+                // offset of the match in the line in doc comments
+                let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
 
                 let line_row = span.start.line;
-                let line_offset = span.start.column + 3 + line_offset;
+                let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
+
+                // line beginning in the file
                 let line_begin_offset = line_row - 1
                     + file_str
                         .lines()
                         .take(line_row - 1)
                         .map(str::len)
                         .sum::<usize>();
+
+                let doc_match_offset = each_match.offset;
 
                 // updating value
                 each_match.offset = line_begin_offset + line_offset;
@@ -204,15 +207,24 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                 // end the context at the end of the line of the end of the match.
 
                 let mut new_context_length = 0;
+                let mut length_delta = 0;
+                let mut match_count = doc_prev_line_end_offset;
 
-                for line in &mut file_str.lines().skip(line_row - 1) {
-                    new_context_length += line.len();
-                    if new_context_length + line_begin_offset
-                        > each_match.offset + each_match.length
-                    {
+                for (doc_line, file_line) in doc_str
+                    .lines()
+                    .skip(row)
+                    .zip(file_str.lines().skip(line_row - 1))
+                {
+                    new_context_length += file_line.len() + 1; // because of newline
+                    match_count += doc_line.len() + 1; // because of newline
+                    if doc_match_offset + each_match.length < match_count {
                         break;
                     }
+                    length_delta += span.start.column + 3; // because of rust comment tags
                 }
+
+                each_match.length += length_delta;
+                each_match.context.length = each_match.length;
 
                 file_str[line_begin_offset..][..new_context_length]
                     .clone_into(&mut each_match.context.text);
