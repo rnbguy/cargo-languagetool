@@ -6,6 +6,7 @@ use color_eyre::Result;
 use languagetool_rust::check::Level as LanguageToolLevel;
 use log::debug;
 
+use crate::cache::DB;
 use crate::cli::Config;
 use crate::doc::{Docs, FixedDoc, FixedDocs};
 use crate::languagetool::Categories as LanguageToolCategories;
@@ -98,9 +99,14 @@ fn doc_checked(
 
     check_request.enabled_only = config.enable_only;
 
-    doc.check_response = Some(
-        tokio::runtime::Runtime::new()?.block_on(async { server.check(&check_request).await })?,
-    );
+    // doc.check_response = Some(
+    //     tokio::runtime::Runtime::new()?.block_on(async { server.check(&check_request).await })?,
+    // );
+
+    let cache_db = DB::new()?;
+    doc.check_response = Some(cache_db.get_or(&check_request, |req| {
+        Ok(tokio::runtime::Runtime::new()?.block_on(async { server.check(req).await })?)
+    })?);
 
     Ok(())
 }
