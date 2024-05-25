@@ -4,7 +4,7 @@ use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 use languagetool_rust::check::Level as LanguageToolLevel;
 
-use crate::cache::DB;
+use crate::cache::SledCacheDb;
 use crate::cli::Config;
 use crate::doc::{Docs, FixedDoc, FixedDocs};
 
@@ -103,7 +103,7 @@ fn doc_checked(
 
     // doc.check_response = Some(rt.block_on(async { server.check(&check_request).await })?);
 
-    let cache_db = DB::new()?;
+    let cache_db = SledCacheDb::new()?;
     doc.check_response = Some(cache_db.get_or(&check_request, |req| {
         Ok(rt.block_on(async { server.check(req).await })?)
     })?);

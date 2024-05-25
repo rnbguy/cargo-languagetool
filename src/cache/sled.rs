@@ -5,9 +5,9 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use sled::Db;
 
-pub struct DB(Db);
+pub struct CacheDb(Db);
 
-impl DB {
+impl CacheDb {
     #[must_use]
     pub fn new() -> Result<Self> {
         let cargo_languagetool_project_dir =
