@@ -160,9 +160,11 @@ impl FixedDoc {
                         .label(&replacements),
                 );
 
+            let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
+
             let message = Level::Error
                 .title(&each_match.message)
-                .id(&each_match.rule.id)
+                .id(&message_id)
                 .snippet(snippet);
 
             let renderer = Renderer::styled();
