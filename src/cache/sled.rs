@@ -16,7 +16,7 @@ impl CacheDb {
 
         Ok(Self(
             sled::Config::default()
-                .path(cargo_languagetool_project_dir.cache_dir().to_owned())
+                .path(cargo_languagetool_project_dir.cache_dir())
                 .cache_capacity(10_000_000_000)
                 .flush_every_ms(Some(1000))
                 .open()?,
