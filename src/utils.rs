@@ -96,13 +96,16 @@ fn doc_checked(
 
     check_request.enabled_only = config.enable_only;
 
-    // doc.check_response = Some(
-    //     tokio::runtime::Runtime::new()?.block_on(async { server.check(&check_request).await })?,
-    // );
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .enable_io()
+        .build()?;
+
+    // doc.check_response = Some(rt.block_on(async { server.check(&check_request).await })?);
 
     let cache_db = DB::new()?;
     doc.check_response = Some(cache_db.get_or(&check_request, |req| {
-        Ok(tokio::runtime::Runtime::new()?.block_on(async { server.check(req).await })?)
+        Ok(rt.block_on(async { server.check(req).await })?)
     })?);
 
     Ok(())
