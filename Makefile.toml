@@ -1,0 +1,14 @@
+[tasks.format-rust]
+command = "cargo"
+args    = [ "fmt" ]
+
+[tasks.format-toml]
+command = "taplo"
+args    = [ "fmt" ]
+
+
+[tasks.format]
+dependencies = [
+  "format-rust",
+  "format-toml",
+]
