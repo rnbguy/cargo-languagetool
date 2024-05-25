@@ -2,8 +2,10 @@
 
 use std::collections::HashMap;
 
+use annotate_snippets::{Level, Renderer, Snippet};
 use color_eyre::eyre::ContextCompat;
 use color_eyre::{Report, Result};
+use log::debug;
 
 // Ideally error should be printed that way:
 //
@@ -112,6 +114,62 @@ impl std::fmt::Display for FixedDoc {
                 write!(f, "\n{fixed_string}")?;
             }
         }
+        Ok(())
+    }
+}
+
+impl FixedDoc {
+    pub fn annotate(&self, file: &str) -> Result<()> {
+        let source = std::fs::read_to_string(file)?;
+
+        let check_response = self.check_response.as_ref().context("No check response")?;
+        debug!("Annotating: {}", file);
+
+        for each_match in &check_response.matches {
+            debug!("Annotating: {:?}", each_match);
+
+            let replacements = each_match
+                .replacements
+                .iter()
+                .fold(String::new(), |mut acc, r| {
+                    if !acc.is_empty() {
+                        acc.push_str(", ");
+                    }
+                    acc.push_str(&r.value);
+                    acc
+                });
+
+            let snippet = Snippet::source(&source)
+                .line_start(
+                    1 + source
+                        .chars()
+                        .take(each_match.offset)
+                        .filter(|c| *c == '\n')
+                        .count(),
+                )
+                .origin(file)
+                .fold(true)
+                .annotation(
+                    Level::Error
+                        .span(each_match.offset..each_match.offset + each_match.length)
+                        .label(&each_match.rule.description),
+                )
+                .annotation(
+                    Level::Help
+                        .span(each_match.offset..each_match.offset + each_match.length)
+                        .label(&replacements),
+                );
+
+            let message = Level::Error
+                .title(&each_match.message)
+                .id(&each_match.rule.id)
+                .snippet(snippet);
+
+            let renderer = Renderer::styled();
+
+            println!("{}", renderer.render(message));
+        }
+
         Ok(())
     }
 }
