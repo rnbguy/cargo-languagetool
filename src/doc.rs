@@ -7,26 +7,6 @@ use color_eyre::eyre::ContextCompat;
 use color_eyre::{Report, Result};
 use log::debug;
 
-// Ideally error should be printed that way:
-//
-// error[grammar]: Missing subject
-// --> src/main.rs:138:16
-//     |
-// 138 | /// Reads the .rs files in the directory recursively.
-//     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//     |     - This sentence appears to be missing a subject. Consider adding a subject or rewriting the sentence.
-//
-//
-//
-// error[grammar]: Spelling
-// --> src/main.rs:138:16
-//     |
-// 138 | /// Thisf module is for easing the pain with printing text in the terminal.
-//     |     ^^^^^
-//     |     - The word "Thisf" is not in our dictionary. If you are sure this spelling is correct,
-//     |     - you can add it to your personal dictionary to prevent future alerts.
-//
-
 #[derive(Debug, Clone)]
 pub struct Docs(pub HashMap<String, Vec<proc_macro2::Literal>>);
 
@@ -69,12 +49,12 @@ where
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FixedDocPos {
+pub struct FixedPos {
     pub line: usize,
     pub column: usize,
 }
 
-impl From<proc_macro2::LineColumn> for FixedDocPos {
+impl From<proc_macro2::LineColumn> for FixedPos {
     fn from(span: proc_macro2::LineColumn) -> Self {
         Self {
             line: span.line,
@@ -84,12 +64,12 @@ impl From<proc_macro2::LineColumn> for FixedDocPos {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FixedDocSpan {
-    pub start: FixedDocPos,
-    pub end: FixedDocPos,
+pub struct FixedSpan {
+    pub start: FixedPos,
+    pub end: FixedPos,
 }
 
-impl From<proc_macro2::Span> for FixedDocSpan {
+impl From<proc_macro2::Span> for FixedSpan {
     fn from(span: proc_macro2::Span) -> Self {
         Self {
             start: span.start().into(),
@@ -100,12 +80,12 @@ impl From<proc_macro2::Span> for FixedDocSpan {
 
 /// The doc is considered "fixed" when it contains text only.
 #[derive(Debug, Clone)]
-pub struct FixedDoc {
-    pub text: Vec<(String, FixedDocSpan)>,
+pub struct FixedDocBlock {
+    pub text: Vec<(String, FixedSpan)>,
     pub check_response: Option<languagetool_rust::CheckResponse>,
 }
 
-impl std::fmt::Display for FixedDoc {
+impl std::fmt::Display for FixedDocBlock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut iter = self.text.iter();
         if let Some((first_string, _)) = iter.next() {
@@ -118,69 +98,77 @@ impl std::fmt::Display for FixedDoc {
     }
 }
 
-impl FixedDoc {
-    pub fn annotate(&self, file: &str) -> Result<()> {
+impl FixedDocBlock {
+    /// Annotate the doc with the check response.
+    ///
+    /// # Errors
+    /// If an error occurs.
+    pub fn annotate(&self, file: &str) -> Result<Vec<String>> {
         let source = std::fs::read_to_string(file)?;
 
         let check_response = self.check_response.as_ref().context("No check response")?;
         debug!("Annotating: {}", file);
 
-        for each_match in &check_response.matches {
-            debug!("Annotating: {:?}", each_match);
+        Ok(check_response
+            .matches
+            .iter()
+            .map(|each_match| {
+                debug!("Annotating: {:?}", each_match);
 
-            let replacements = each_match
-                .replacements
-                .iter()
-                .fold(String::new(), |mut acc, r| {
-                    if !acc.is_empty() {
-                        acc.push_str(", ");
-                    }
-                    acc.push_str(&r.value);
-                    acc
-                });
+                let replacements =
+                    each_match
+                        .replacements
+                        .iter()
+                        .fold(String::new(), |mut acc, r| {
+                            if !acc.is_empty() {
+                                acc.push_str(", ");
+                            }
+                            acc.push_str(&r.value);
+                            acc
+                        });
 
-            let snippet = Snippet::source(&source)
-                .line_start(
-                    1 + source
-                        .chars()
-                        .take(each_match.offset)
-                        .filter(|c| *c == '\n')
-                        .count(),
-                )
-                .origin(file)
-                .fold(true)
-                .annotation(
-                    Level::Error
-                        .span(each_match.offset..each_match.offset + each_match.length)
-                        .label(&each_match.rule.description),
-                )
-                .annotation(
-                    Level::Help
-                        .span(each_match.offset..each_match.offset + each_match.length)
-                        .label(&replacements),
-                );
+                let snippet = Snippet::source(&source)
+                    .line_start(
+                        1 + source
+                            .chars()
+                            .take(each_match.offset)
+                            .filter(|c| *c == '\n')
+                            .count(),
+                    )
+                    .origin(file)
+                    .fold(true)
+                    .annotation(
+                        Level::Error
+                            .span(each_match.offset..each_match.offset + each_match.length)
+                            .label(&each_match.rule.description),
+                    )
+                    .annotation(
+                        Level::Help
+                            .span(each_match.offset..each_match.offset + each_match.length)
+                            .label(&replacements),
+                    );
 
-            let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
+                let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
 
-            let message = Level::Error
-                .title(&each_match.message)
-                .id(&message_id)
-                .snippet(snippet);
+                let message = Level::Error
+                    .title(&each_match.message)
+                    .id(&message_id)
+                    .snippet(snippet);
 
-            let renderer = Renderer::styled();
+                let renderer = Renderer::styled();
 
-            println!("{}", renderer.render(message));
-        }
+                let annotation = renderer.render(message).to_string();
 
-        Ok(())
+                annotation
+            })
+            .collect())
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FixedDocs {
     pub original: Docs,
-    pub fixed: HashMap<String, Vec<FixedDoc>>,
-    // mappings: Vec<usize>,
+    pub fixed: HashMap<String, Vec<FixedDocBlock>>,
 }
 
 // fn fix_string(s: &str) -> String {
@@ -192,28 +180,17 @@ pub struct FixedDocs {
 //         .to_owned()
 // }
 
-// impl<T> From<T> for FixedDocs where T: AsRef<Docs> {
-//     fn from(original: T) -> FixedDocs {
 impl TryFrom<Docs> for FixedDocs {
     type Error = Report;
 
     fn try_from(original: Docs) -> Result<Self> {
-        // let mut fixed = Docs(HashMap::new());
-        // let mut mappings = Vec::new();
-        // let original = original.as_ref();
-        let mut fixed: HashMap<String, Vec<FixedDoc>> = HashMap::new();
+        let mut fixed: HashMap<String, Vec<FixedDocBlock>> = HashMap::new();
 
         for (file, docs) in &original.0 {
             for doc in docs {
-                // let fixed_string = &fix_string(&original_string);
-                // dbg!(&original_string, &fixed_string);
-                // let start_column_diff = original_string.len() - fixed_string.len();
-                // span.start.column += start_column_diff;
-                // dbg!(&original_string, &fixed_string, &span);
-
                 let (original_string, span) = {
                     let original_string: String = serde_json::from_str(&doc.to_string())?;
-                    let mut span: FixedDocSpan = doc.span().into();
+                    let mut span: FixedSpan = doc.span().into();
                     match original_string.strip_prefix(' ') {
                         Some(fixed_string) => {
                             span.start.column += 1;
@@ -232,7 +209,7 @@ impl TryFrom<Docs> for FixedDocs {
                     {
                         last.text.push((original_string.clone(), span));
                     } else {
-                        fixed_docs.push(FixedDoc {
+                        fixed_docs.push(FixedDocBlock {
                             text: vec![(original_string.clone(), span)],
                             check_response: None,
                         });
@@ -240,7 +217,7 @@ impl TryFrom<Docs> for FixedDocs {
                 } else {
                     fixed.insert(
                         file.clone(),
-                        vec![FixedDoc {
+                        vec![FixedDocBlock {
                             text: vec![(original_string.clone(), span)],
                             check_response: None,
                         }],
@@ -249,10 +226,6 @@ impl TryFrom<Docs> for FixedDocs {
             }
         }
 
-        Ok(Self {
-            original,
-            fixed,
-            // mappings,
-        })
+        Ok(Self { original, fixed })
     }
 }

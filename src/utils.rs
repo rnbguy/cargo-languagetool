@@ -6,9 +6,12 @@ use languagetool_rust::check::Level as LanguageToolLevel;
 
 use crate::cache::SledCacheDb;
 use crate::cli::Config;
-use crate::doc::{Docs, FixedDoc, FixedDocs};
+use crate::doc::{Docs, FixedDocBlock, FixedDocs};
 
 /// Reads the .rs files in the directory recursively.
+///
+/// # Errors
+/// If an error occurs.
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
     use proc_macro2::TokenStream;
 
@@ -47,7 +50,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
 fn doc_checked(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    doc: &mut FixedDoc,
+    doc: &mut FixedDocBlock,
 ) -> Result<()> {
     let mut check_request = languagetool_rust::CheckRequest::default().with_text(doc.to_string());
 
@@ -214,6 +217,10 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
     Ok(())
 }
 
+/// Check the grammar of the documents.
+///
+/// # Errors
+/// If an error occurs.
 pub fn check_grammar(
     server: &languagetool_rust::ServerClient,
     config: &Config,

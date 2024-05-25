@@ -61,6 +61,10 @@ pub enum Cargo {
 }
 
 impl Cargo {
+    /// Run the command.
+    ///
+    /// # Errors
+    /// If an error occurs.
     pub fn run(&self) -> Result<()> {
         let Self::LanguageTool(cmd) = self;
 

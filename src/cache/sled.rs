@@ -8,7 +8,10 @@ use sled::Db;
 pub struct CacheDb(Db);
 
 impl CacheDb {
-    #[must_use]
+    /// Create a new cache database.
+    ///
+    /// # Errors
+    /// If the cache directory cannot be created.
     pub fn new() -> Result<Self> {
         let cargo_languagetool_project_dir =
             directories::ProjectDirs::from("in", "ranadeep", "cargo-languagetool")
@@ -23,6 +26,10 @@ impl CacheDb {
         ))
     }
 
+    /// Get a value from the cache database.
+    ///
+    /// # Errors
+    /// If the key or the value cannot be serialized or deserialized.
     pub fn get_or<K, V>(&self, key: K, func: impl FnOnce(&K) -> Result<V>) -> Result<V>
     where
         K: Serialize,
