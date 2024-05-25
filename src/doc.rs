@@ -49,12 +49,12 @@ where
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FixedPos {
+pub struct FixedDocPos {
     pub line: usize,
     pub column: usize,
 }
 
-impl From<proc_macro2::LineColumn> for FixedPos {
+impl From<proc_macro2::LineColumn> for FixedDocPos {
     fn from(span: proc_macro2::LineColumn) -> Self {
         Self {
             line: span.line,
@@ -64,12 +64,12 @@ impl From<proc_macro2::LineColumn> for FixedPos {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FixedSpan {
-    pub start: FixedPos,
-    pub end: FixedPos,
+pub struct FixedDocSpan {
+    pub start: FixedDocPos,
+    pub end: FixedDocPos,
 }
 
-impl From<proc_macro2::Span> for FixedSpan {
+impl From<proc_macro2::Span> for FixedDocSpan {
     fn from(span: proc_macro2::Span) -> Self {
         Self {
             start: span.start().into(),
@@ -80,12 +80,12 @@ impl From<proc_macro2::Span> for FixedSpan {
 
 /// The doc is considered "fixed" when it contains text only.
 #[derive(Debug, Clone)]
-pub struct FixedDocBlock {
-    pub text: Vec<(String, FixedSpan)>,
+pub struct FixedDoc {
+    pub text: Vec<(String, FixedDocSpan)>,
     pub check_response: Option<languagetool_rust::CheckResponse>,
 }
 
-impl std::fmt::Display for FixedDocBlock {
+impl std::fmt::Display for FixedDoc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut iter = self.text.iter();
         if let Some((first_string, _)) = iter.next() {
@@ -98,7 +98,7 @@ impl std::fmt::Display for FixedDocBlock {
     }
 }
 
-impl FixedDocBlock {
+impl FixedDoc {
     /// Annotate the doc with the check response.
     ///
     /// # Errors
@@ -168,7 +168,7 @@ impl FixedDocBlock {
 #[derive(Debug, Clone)]
 pub struct FixedDocs {
     pub original: Docs,
-    pub fixed: HashMap<String, Vec<FixedDocBlock>>,
+    pub fixed: HashMap<String, Vec<FixedDoc>>,
 }
 
 // fn fix_string(s: &str) -> String {
@@ -184,13 +184,13 @@ impl TryFrom<Docs> for FixedDocs {
     type Error = Report;
 
     fn try_from(original: Docs) -> Result<Self> {
-        let mut fixed: HashMap<String, Vec<FixedDocBlock>> = HashMap::new();
+        let mut fixed: HashMap<String, Vec<FixedDoc>> = HashMap::new();
 
         for (file, docs) in &original.0 {
             for doc in docs {
                 let (original_string, span) = {
                     let original_string: String = serde_json::from_str(&doc.to_string())?;
-                    let mut span: FixedSpan = doc.span().into();
+                    let mut span: FixedDocSpan = doc.span().into();
                     match original_string.strip_prefix(' ') {
                         Some(fixed_string) => {
                             span.start.column += 1;
@@ -209,7 +209,7 @@ impl TryFrom<Docs> for FixedDocs {
                     {
                         last.text.push((original_string.clone(), span));
                     } else {
-                        fixed_docs.push(FixedDocBlock {
+                        fixed_docs.push(FixedDoc {
                             text: vec![(original_string.clone(), span)],
                             check_response: None,
                         });
@@ -217,7 +217,7 @@ impl TryFrom<Docs> for FixedDocs {
                 } else {
                     fixed.insert(
                         file.clone(),
-                        vec![FixedDocBlock {
+                        vec![FixedDoc {
                             text: vec![(original_string.clone(), span)],
                             check_response: None,
                         }],

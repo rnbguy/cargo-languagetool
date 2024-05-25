@@ -6,7 +6,7 @@ use languagetool_rust::check::Level as LanguageToolLevel;
 
 use crate::cache::SledCacheDb;
 use crate::cli::Config;
-use crate::doc::{Docs, FixedDocBlock, FixedDocs};
+use crate::doc::{Docs, FixedDoc, FixedDocs};
 
 /// Reads the .rs files in the directory recursively.
 ///
@@ -50,7 +50,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
 fn doc_checked(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    doc: &mut FixedDocBlock,
+    doc: &mut FixedDoc,
 ) -> Result<()> {
     let mut check_request = languagetool_rust::CheckRequest::default().with_text(doc.to_string());
 

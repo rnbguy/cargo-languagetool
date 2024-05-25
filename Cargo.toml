@@ -33,7 +33,11 @@ annotate-snippets = { version = "0.11.2" }
 unused_imports = "warn"
 
 [lints.clippy]
-all      = "warn"
-pedantic = "warn"
-nursery  = "warn"
-cargo    = "warn"
+all      = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery  = { level = "warn", priority = -1 }
+cargo    = { level = "warn", priority = -1 }
+
+# allows
+multiple_crate_versions = "allow"
+module_name_repetitions = "allow"
