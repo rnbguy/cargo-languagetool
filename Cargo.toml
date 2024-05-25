@@ -27,6 +27,7 @@ serde             = { version = "1.0.202", features = [ "derive" ] }
 sha2              = { version = "0.10.8" }
 directories       = { version = "5.0.1" }
 sled              = { version = "0.34.7" }
+annotate-snippets = { version = "0.11.2" }
 
 [lints.rust]
 unused_imports = "warn"
