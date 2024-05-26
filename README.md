@@ -65,6 +65,10 @@ Options:
           [default: en-US]
       --picky
 
+      --no-cache
+          Disable cache query.
+      --show-all
+          Show all doc comments (even cached).
   -h, --help
           Print help
   -V, --version
