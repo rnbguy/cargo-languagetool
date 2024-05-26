@@ -1,0 +1,4 @@
+[workspace]
+git_release_enable  = true
+publish_allow_dirty = false
+allow_dirty         = false
