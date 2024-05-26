@@ -6,9 +6,14 @@ args    = [ "fmt" ]
 command = "taplo"
 args    = [ "fmt" ]
 
+[tasks.format-prettier]
+command = "prettier"
+args    = [ "--write", "." ]
+
 
 [tasks.format]
 dependencies = [
   "format-rust",
   "format-toml",
+  "format-prettier",
 ]
