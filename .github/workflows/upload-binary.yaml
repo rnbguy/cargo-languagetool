@@ -26,6 +26,7 @@ jobs:
     if: github.repository_owner == 'rnbguy' && startsWith(github.event.release.name, 'v')
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: aarch64-unknown-linux-gnu
