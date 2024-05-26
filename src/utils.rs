@@ -130,8 +130,8 @@ fn docs_checked(
 /// Pretty-printer.
 fn print_docs(docs: &FixedDocs) -> Result<()> {
     for (file, docs) in &docs.fixed {
+        let source = std::fs::read_to_string(file)?;
         for doc in docs {
-            let source = std::fs::read_to_string(file)?;
             let check_response = doc.check_response.as_ref().context("No check response")?;
             FixedDoc::annotate(file, &source, check_response);
         }
@@ -171,12 +171,11 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                 let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
 
                 // line beginning in the file
-                let line_begin_offset = line_row - 1
-                    + file_str
-                        .lines()
-                        .take(line_row - 1)
-                        .map(str::len)
-                        .sum::<usize>();
+                let line_begin_offset = file_str
+                    .lines()
+                    .take(line_row - 1)
+                    .map(|st| st.len() + 1)
+                    .sum::<usize>();
 
                 let doc_match_offset = each_match.offset;
 
