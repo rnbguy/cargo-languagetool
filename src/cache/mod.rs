@@ -1,13 +1,12 @@
-mod sled;
+pub mod sled;
 
 use std::path::Path;
 
 use color_eyre::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-pub use sled::Db as SledCacheDb;
 
-pub trait CacheDb<const HASHED_KEY_SIZE: usize = 32>: Sized {
+pub trait Cacheable<const HASHED_KEY_SIZE: usize = 32>: Sized {
     /// Create a new cache database.
     ///
     /// # Errors
@@ -39,7 +38,7 @@ pub trait CacheDb<const HASHED_KEY_SIZE: usize = 32>: Sized {
         K: Serialize,
         V: Serialize,
     {
-        let value = func(&key)?;
+        let value = func(key)?;
         self.set_raw(serde_json::to_vec(key)?, serde_json::to_vec(&value)?)?;
         Ok(value)
     }
@@ -53,8 +52,10 @@ pub trait CacheDb<const HASHED_KEY_SIZE: usize = 32>: Sized {
         K: Serialize,
         V: Serialize + DeserializeOwned,
     {
-        let value = self.get_raw(serde_json::to_vec(&key)?)?;
-        Ok(value.map(|v| serde_json::from_slice(&v)).transpose()?)
+        self.get_raw(serde_json::to_vec(&key)?)?
+            .map(|value| serde_json::from_slice(&value))
+            .transpose()
+            .map_err(Into::into)
     }
 
     /// Check if a key exists in the cache database.

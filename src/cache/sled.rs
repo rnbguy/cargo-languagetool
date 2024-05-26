@@ -4,11 +4,11 @@ use color_eyre::Result;
 use sha2::{Digest, Sha256};
 use sled::Db as SledDb;
 
-use crate::cache::CacheDb;
+use crate::cache::Cacheable;
 
-pub struct Db(SledDb);
+pub struct SledCacheStore(SledDb);
 
-impl CacheDb for Db {
+impl Cacheable for SledCacheStore {
     fn new(dir: impl AsRef<Path>) -> Result<Self> {
         Ok(Self(
             sled::Config::default()
@@ -20,7 +20,7 @@ impl CacheDb for Db {
     }
 
     fn get_hashed_key_raw(&self, hashed_key: [u8; 32]) -> Result<Option<Vec<u8>>> {
-        Ok(self.0.get(hashed_key)?.map(|v| v.to_vec()))
+        Ok(self.0.get(hashed_key)?.map(|hash| hash.to_vec()))
     }
 
     fn set_hashed_key_raw(&self, hashed_key: [u8; 32], value: Vec<u8>) -> Result<()> {

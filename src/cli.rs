@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser};
 use color_eyre::Result;
 
-use crate::languagetool::Categories;
+use crate::languagetool::categories::Categories;
 use crate::utils::{check_grammar, fetch_docs};
 
 #[allow(clippy::struct_excessive_bools)]

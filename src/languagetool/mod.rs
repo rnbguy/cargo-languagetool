@@ -1,3 +1,1 @@
-mod categories;
-
-pub use categories::Categories;
+pub mod categories;

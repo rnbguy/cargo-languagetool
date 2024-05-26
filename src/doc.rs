@@ -9,13 +9,18 @@ use languagetool_rust::CheckResponse;
 use log::debug;
 
 #[derive(Debug, Clone)]
-pub struct Docs(pub HashMap<String, Vec<proc_macro2::Literal>>);
+pub struct Docs(HashMap<String, Vec<proc_macro2::Literal>>);
 
 impl Docs {
     fn append(&mut self, docs: Self) {
-        for (k, mut v) in docs.0 {
-            self.0.entry(k).or_default().append(&mut v);
-        }
+        docs.0.into_iter().for_each(|(key, mut value)| {
+            self.0.entry(key).or_default().append(&mut value);
+        });
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
@@ -87,12 +92,12 @@ pub struct FixedDoc {
 }
 
 impl core::fmt::Display for FixedDoc {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut iter = self.text.iter();
         if let Some((first_string, _)) = iter.next() {
-            write!(f, "{first_string}")?;
+            write!(formatter, "{first_string}")?;
             for (fixed_string, _) in iter {
-                write!(f, "\n{fixed_string}")?;
+                write!(formatter, "\n{fixed_string}")?;
             }
         }
         Ok(())
@@ -110,23 +115,23 @@ impl FixedDoc {
         check_response.matches.iter().for_each(|each_match| {
             debug!("Annotating: {:?}", each_match);
 
-            let replacements = each_match
-                .replacements
-                .iter()
-                .fold(String::new(), |mut acc, r| {
-                    if !acc.is_empty() {
-                        acc.push_str(", ");
+            let replacements = each_match.replacements.iter().fold(
+                String::new(),
+                |mut joined_string, replacement| {
+                    if !joined_string.is_empty() {
+                        joined_string.push_str(", ");
                     }
-                    acc.push_str(&r.value);
-                    acc
-                });
+                    joined_string.push_str(&replacement.value);
+                    joined_string
+                },
+            );
 
             let snippet = Snippet::source(&each_match.context.text)
                 .line_start(
                     1 + source
                         .chars()
                         .take(each_match.offset)
-                        .filter(|c| *c == '\n')
+                        .filter(|chr| chr == &'\n')
                         .count(),
                 )
                 .origin(file)

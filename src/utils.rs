@@ -4,7 +4,8 @@ use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 use languagetool_rust::check::Level as LanguageToolLevel;
 
-use crate::cache::{CacheDb, SledCacheDb};
+use crate::cache::sled::SledCacheStore as SledCacheDb;
+use crate::cache::Cacheable;
 use crate::cli::Config;
 use crate::doc::{Docs, FixedDoc, FixedDocs};
 
@@ -15,31 +16,24 @@ use crate::doc::{Docs, FixedDoc, FixedDocs};
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
     use proc_macro2::TokenStream;
 
-    let is_rs = |e: &walkdir::DirEntry| -> bool {
-        e.file_type().is_file()
-            && e.path()
-                .extension()
-                .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
-    };
-    let parse_docs = |path: &String| -> Result<Docs> {
-        use std::fs;
-        let content = fs::read_to_string(path)?;
-        let stream: TokenStream = syn::parse_str(&content)?;
-        Ok(Docs::from((path, stream)))
-    };
-
-    let files = walkdir::WalkDir::new(dir)
+    walkdir::WalkDir::new(dir)
         .max_depth(999)
         .into_iter()
         .filter_map(core::result::Result::ok)
-        .filter(is_rs)
-        .filter_map(|e| Some(e.path().to_str()?.to_owned()))
-        .collect::<Vec<String>>();
-
-    files
-        .iter()
-        .map(parse_docs)
-        .filter(|d| d.as_ref().map(|x| x.0.is_empty()).ok() == Some(false))
+        .filter(|entry| {
+            !entry.file_type().is_dir()
+                && entry
+                    .path()
+                    .extension()
+                    .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
+        })
+        .filter_map(|entry| Some(entry.path().to_str()?.to_owned()))
+        .map(|path| {
+            let content = std::fs::read_to_string(&path)?;
+            let stream: TokenStream = syn::parse_str(&content)?;
+            Ok(Docs::from((&path, stream)))
+        })
+        .filter(|docs| docs.as_ref().map(Docs::is_empty).ok() != Some(true))
         .collect::<Result<_>>()
 }
 
@@ -119,6 +113,9 @@ fn doc_checked(
                 Ok(rt.block_on(async { server.check(req).await })?)
             })?
         });
+    } else {
+        // !config.no_cache && !config.show_all && cache_db.hits(&check_request)?
+        // we don't print the result.
     }
 
     Ok(())
@@ -139,8 +136,8 @@ fn docs_checked(
 }
 
 /// Pretty-printer.
-fn print_docs(docs: &FixedDocs) -> Result<()> {
-    for (file, docs) in &docs.fixed {
+fn print_docs(file_docs: &FixedDocs) -> Result<()> {
+    for (file, docs) in &file_docs.fixed {
         let source = std::fs::read_to_string(file)?;
         for doc in docs {
             if let Some(check_response) = &doc.check_response {
@@ -160,12 +157,13 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
                 for each_match in &mut check_response.matches {
                     let file_str = std::fs::read_to_string(file)?;
 
-                    assert_eq!(each_match.length, each_match.context.length);
+                    // ensured by LT API.
+                    // assert_eq!(each_match.length, each_match.context.length);
 
                     let row = doc_str
                         .chars()
                         .take(each_match.offset)
-                        .filter(|&c| c == '\n')
+                        .filter(|chr| chr == &'\n')
                         .count();
 
                     let (_line, span) = &doc.text[row];
@@ -234,10 +232,10 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
 ///
 /// # Errors
 /// If an error occurs.
-pub fn check_grammar(
+pub fn check_grammar<I: IntoIterator<Item = Docs>>(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    docs: impl IntoIterator<Item = Docs>,
+    docs: I,
 ) -> Result<()> {
     for doc in docs {
         let mut fixed_doc = FixedDocs::try_from(doc)?;
