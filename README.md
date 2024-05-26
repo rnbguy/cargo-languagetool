@@ -65,8 +65,9 @@ Options:
 
 # Configuring
 
-The utility works out of the box. However, if you want to use your premium key,
-you may want to put it in the `.env` file or as an environment variable as:
+The utility works out of the box. However, if you want to use your
+[premium key][languagetool-api-key], you may want to put it in the `.env` file
+or as an environment variable as:
 
 ```
 LANGUAGETOOL_USERNAME=jane@doe.com
@@ -101,5 +102,6 @@ regular expressions would waste a lot of time.
 [license-image]: https://img.shields.io/badge/License-MIT-yellow.svg
 [license-link]: https://github.com/rnbguy/cargo-languagetool/blob/main/LICENSE
 [languagetool]: https://languagetoolplus.com
+[languagetool-api-key]: https://languagetool.org/editor/settings/access-tokens
 [languagetool-rust]: https://crates.io/crates/languagetool-rust
 [annotate-snippets]: https://crates.io/crates/annotate-snippets
