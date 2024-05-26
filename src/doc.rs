@@ -121,7 +121,7 @@ impl FixedDoc {
                     acc
                 });
 
-            let snippet = Snippet::source(source)
+            let snippet = Snippet::source(&each_match.context.text)
                 .line_start(
                     1 + source
                         .chars()
@@ -133,12 +133,18 @@ impl FixedDoc {
                 .fold(true)
                 .annotation(
                     Level::Error
-                        .span(each_match.offset..each_match.offset + each_match.length)
+                        .span(
+                            each_match.context.offset
+                                ..each_match.context.offset + each_match.context.length,
+                        )
                         .label(&each_match.rule.description),
                 )
                 .annotation(
                     Level::Help
-                        .span(each_match.offset..each_match.offset + each_match.length)
+                        .span(
+                            each_match.context.offset
+                                ..each_match.context.offset + each_match.context.length,
+                        )
                         .label(&replacements),
                 );
 
