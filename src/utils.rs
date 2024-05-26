@@ -13,7 +13,7 @@ use crate::doc::{Docs, FixedDoc, FixedDocs};
 ///
 /// # Errors
 /// If an error occurs.
-pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
+pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, Docs)>> {
     use proc_macro2::TokenStream;
 
     walkdir::WalkDir::new(dir)
@@ -31,9 +31,9 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
         .map(|path| {
             let content = std::fs::read_to_string(&path)?;
             let stream: TokenStream = syn::parse_str(&content)?;
-            Ok(Docs::from((&path, stream)))
+            Ok((path, Docs::from(stream)))
         })
-        .filter(|docs| docs.as_ref().map(Docs::is_empty).ok() != Some(true))
+        .filter(|result| result.as_ref().map(|(_, docs)| !docs.0.is_empty()).ok() != Some(true))
         .collect::<Result<_>>()
 }
 
@@ -126,101 +126,95 @@ fn docs_checked(
     config: &Config,
     docs: &mut FixedDocs,
 ) -> Result<()> {
-    for docs in docs.fixed.values_mut() {
-        for doc in docs {
-            doc_checked(server, config, doc)?;
-        }
+    for doc in &mut docs.fixed {
+        doc_checked(server, config, doc)?;
     }
 
     Ok(())
 }
 
 /// Pretty-printer.
-fn print_docs(file_docs: &FixedDocs) -> Result<()> {
-    for (file, docs) in &file_docs.fixed {
-        let source = std::fs::read_to_string(file)?;
-        for doc in docs {
-            if let Some(check_response) = &doc.check_response {
-                FixedDoc::annotate(file, &source, check_response);
-            }
+fn print_docs(file: &str, docs: &FixedDocs) -> Result<()> {
+    let source = std::fs::read_to_string(file)?;
+    for doc in &docs.fixed {
+        if let Some(check_response) = &doc.check_response {
+            FixedDoc::annotate(file, &source, check_response);
         }
     }
 
     Ok(())
 }
 
-fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
-    for (file, docs) in &mut docs.fixed {
-        for doc in docs {
-            let doc_str = doc.to_string();
-            if let Some(check_response) = doc.check_response.as_mut() {
-                for each_match in &mut check_response.matches {
-                    let file_str = std::fs::read_to_string(file)?;
+fn transform_matches(file: &str, docs: &mut FixedDocs) -> Result<()> {
+    for doc in &mut docs.fixed {
+        let doc_str = doc.to_string();
+        if let Some(check_response) = doc.check_response.as_mut() {
+            for each_match in &mut check_response.matches {
+                let file_str = std::fs::read_to_string(file)?;
 
-                    // ensured by LT API.
-                    // assert_eq!(each_match.length, each_match.context.length);
+                // ensured by LT API.
+                // assert_eq!(each_match.length, each_match.context.length);
 
-                    let row = doc_str
-                        .chars()
-                        .take(each_match.offset)
-                        .filter(|chr| chr == &'\n')
-                        .count();
+                let row = doc_str
+                    .chars()
+                    .take(each_match.offset)
+                    .filter(|chr| chr == &'\n')
+                    .count();
 
-                    let (_line, span) = &doc.text[row];
+                let (_line, span) = &doc.text[row];
 
-                    let doc_prev_line_end_offset = doc_str
-                        .lines()
-                        .take(row)
-                        .map(|st| st.len() + 1) // because of extra space
-                        .sum::<usize>();
+                let doc_prev_line_end_offset = doc_str
+                    .lines()
+                    .take(row)
+                    .map(|st| st.len() + 1) // because of extra space
+                    .sum::<usize>();
 
-                    // offset of the match in the line in doc comments
-                    let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
+                // offset of the match in the line in doc comments
+                let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
 
-                    let line_row = span.start.line;
-                    let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
+                let line_row = span.start.line;
+                let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
 
-                    // line beginning in the file
-                    let line_begin_offset = file_str
-                        .lines()
-                        .take(line_row - 1)
-                        .map(|st| st.len() + 1)
-                        .sum::<usize>();
+                // line beginning in the file
+                let line_begin_offset = file_str
+                    .lines()
+                    .take(line_row - 1)
+                    .map(|st| st.len() + 1)
+                    .sum::<usize>();
 
-                    let doc_match_offset = each_match.offset;
+                let doc_match_offset = each_match.offset;
 
-                    // updating value
-                    each_match.offset = line_begin_offset + line_offset;
+                // updating value
+                each_match.offset = line_begin_offset + line_offset;
 
-                    // LT context starts at: each_match.offset - each_match.context.offset
-                    // start the context from the same line as the beginning of the match.
-                    each_match.context.offset = line_offset; // this gets changed too
+                // LT context starts at: each_match.offset - each_match.context.offset
+                // start the context from the same line as the beginning of the match.
+                each_match.context.offset = line_offset; // this gets changed too
 
-                    // end the context at the end of the line of the end of the match.
+                // end the context at the end of the line of the end of the match.
 
-                    let mut new_context_length = 0;
-                    let mut length_delta = 0;
-                    let mut match_count = doc_prev_line_end_offset;
+                let mut new_context_length = 0;
+                let mut length_delta = 0;
+                let mut match_count = doc_prev_line_end_offset;
 
-                    for (doc_line, file_line) in doc_str
-                        .lines()
-                        .skip(row)
-                        .zip(file_str.lines().skip(line_row - 1))
-                    {
-                        new_context_length += file_line.len() + 1; // because of newline
-                        match_count += doc_line.len() + 1; // because of newline
-                        if doc_match_offset + each_match.length < match_count {
-                            break;
-                        }
-                        length_delta += span.start.column + 3; // because of rust comment tags
+                for (doc_line, file_line) in doc_str
+                    .lines()
+                    .skip(row)
+                    .zip(file_str.lines().skip(line_row - 1))
+                {
+                    new_context_length += file_line.len() + 1; // because of newline
+                    match_count += doc_line.len() + 1; // because of newline
+                    if doc_match_offset + each_match.length < match_count {
+                        break;
                     }
-
-                    each_match.length += length_delta;
-                    each_match.context.length = each_match.length;
-
-                    file_str[line_begin_offset..][..new_context_length]
-                        .clone_into(&mut each_match.context.text);
+                    length_delta += span.start.column + 3; // because of rust comment tags
                 }
+
+                each_match.length += length_delta;
+                each_match.context.length = each_match.length;
+
+                file_str[line_begin_offset..][..new_context_length]
+                    .clone_into(&mut each_match.context.text);
             }
         }
     }
@@ -232,16 +226,16 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
 ///
 /// # Errors
 /// If an error occurs.
-pub fn check_grammar<I: IntoIterator<Item = Docs>>(
+pub fn check_grammar<I: IntoIterator<Item = (String, Docs)>>(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    docs: I,
+    files: I,
 ) -> Result<()> {
-    for doc in docs {
+    for (file, doc) in files {
         let mut fixed_doc = FixedDocs::try_from(doc)?;
         docs_checked(server, config, &mut fixed_doc)?;
-        transform_matches(&mut fixed_doc)?;
-        print_docs(&fixed_doc)?;
+        transform_matches(&file, &mut fixed_doc)?;
+        print_docs(&file, &fixed_doc)?;
     }
 
     Ok(())
