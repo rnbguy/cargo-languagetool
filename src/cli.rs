@@ -74,16 +74,14 @@ impl Cargo {
         )
         .with_max_suggestions(5);
 
-        let docs_result: Result<Vec<_>> =
-            cmd.paths
-                .iter()
-                .map(fetch_docs)
-                .try_fold(Vec::new(), |mut acc, docs_result| {
-                    acc.extend(docs_result?);
-                    Ok(acc)
-                });
-
-        let docs = docs_result?;
+        let docs = cmd
+            .paths
+            .iter()
+            .map(fetch_docs)
+            .try_fold::<_, _, Result<_>>(Vec::new(), |mut acc, docs_result| {
+                acc.extend(docs_result?);
+                Ok(acc)
+            })?;
 
         check_grammar(&server, &cmd.config, &docs)?;
 
