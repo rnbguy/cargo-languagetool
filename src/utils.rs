@@ -131,7 +131,9 @@ fn docs_checked(
 fn print_docs(docs: &FixedDocs) -> Result<()> {
     for (file, docs) in &docs.fixed {
         for doc in docs {
-            doc.annotate(file)?;
+            let source = std::fs::read_to_string(file)?;
+            let check_response = doc.check_response.as_ref().context("No check response")?;
+            FixedDoc::annotate(file, &source, check_response);
         }
     }
 

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use annotate_snippets::{Level, Renderer, Snippet};
 use color_eyre::eyre::ContextCompat;
 use color_eyre::{Report, Result};
+use languagetool_rust::CheckResponse;
 use log::debug;
 
 #[derive(Debug, Clone)]
@@ -103,65 +104,57 @@ impl FixedDoc {
     ///
     /// # Errors
     /// If an error occurs.
-    pub fn annotate(&self, file: &str) -> Result<Vec<String>> {
-        let source = std::fs::read_to_string(file)?;
-
-        let check_response = self.check_response.as_ref().context("No check response")?;
+    pub fn annotate(file: &str, source: &str, check_response: &CheckResponse) {
         debug!("Annotating: {}", file);
 
-        Ok(check_response
-            .matches
-            .iter()
-            .map(|each_match| {
-                debug!("Annotating: {:?}", each_match);
+        check_response.matches.iter().for_each(|each_match| {
+            debug!("Annotating: {:?}", each_match);
 
-                let replacements =
-                    each_match
-                        .replacements
-                        .iter()
-                        .fold(String::new(), |mut acc, r| {
-                            if !acc.is_empty() {
-                                acc.push_str(", ");
-                            }
-                            acc.push_str(&r.value);
-                            acc
-                        });
+            let replacements = each_match
+                .replacements
+                .iter()
+                .fold(String::new(), |mut acc, r| {
+                    if !acc.is_empty() {
+                        acc.push_str(", ");
+                    }
+                    acc.push_str(&r.value);
+                    acc
+                });
 
-                let snippet = Snippet::source(&source)
-                    .line_start(
-                        1 + source
-                            .chars()
-                            .take(each_match.offset)
-                            .filter(|c| *c == '\n')
-                            .count(),
-                    )
-                    .origin(file)
-                    .fold(true)
-                    .annotation(
-                        Level::Error
-                            .span(each_match.offset..each_match.offset + each_match.length)
-                            .label(&each_match.rule.description),
-                    )
-                    .annotation(
-                        Level::Help
-                            .span(each_match.offset..each_match.offset + each_match.length)
-                            .label(&replacements),
-                    );
+            let snippet = Snippet::source(source)
+                .line_start(
+                    1 + source
+                        .chars()
+                        .take(each_match.offset)
+                        .filter(|c| *c == '\n')
+                        .count(),
+                )
+                .origin(file)
+                .fold(true)
+                .annotation(
+                    Level::Error
+                        .span(each_match.offset..each_match.offset + each_match.length)
+                        .label(&each_match.rule.description),
+                )
+                .annotation(
+                    Level::Help
+                        .span(each_match.offset..each_match.offset + each_match.length)
+                        .label(&replacements),
+                );
 
-                let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
+            let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
 
-                let message = Level::Error
-                    .title(&each_match.message)
-                    .id(&message_id)
-                    .snippet(snippet);
+            let message = Level::Error
+                .title(&each_match.message)
+                .id(&message_id)
+                .snippet(snippet);
 
-                let renderer = Renderer::styled();
+            let renderer = Renderer::styled();
 
-                let annotation = renderer.render(message).to_string();
+            let annotation = renderer.render(message).to_string();
 
-                annotation
-            })
-            .collect())
+            println!("{annotation}");
+        });
     }
 }
 
