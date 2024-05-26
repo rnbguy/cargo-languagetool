@@ -40,6 +40,9 @@ pub struct Config {
 
     #[clap(long)]
     pub picky: bool,
+
+    #[clap(long, help = "Disable cache query.")]
+    pub no_cache: bool,
 }
 
 #[derive(Args)]

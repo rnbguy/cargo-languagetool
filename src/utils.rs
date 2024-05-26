@@ -106,9 +106,16 @@ fn doc_checked(
         directories::ProjectDirs::from("rnbguy", "github", "cargo-languagetool")
             .context("failed to get cache directory")?;
     let cache_db = SledCacheDb::new(cargo_languagetool_project_dir.cache_dir())?;
-    doc.check_response = Some(cache_db.get_or(&check_request, |req| {
-        Ok(rt.block_on(async { server.check(req).await })?)
-    })?);
+
+    doc.check_response = Some(if config.no_cache {
+        cache_db.set_and_get(&check_request, |req| {
+            Ok(rt.block_on(async { server.check(req).await })?)
+        })?
+    } else {
+        cache_db.get_or(&check_request, |req| {
+            Ok(rt.block_on(async { server.check(req).await })?)
+        })?
+    });
 
     Ok(())
 }

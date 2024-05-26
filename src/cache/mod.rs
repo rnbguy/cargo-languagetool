@@ -39,15 +39,25 @@ pub trait CacheDb<const HASHED_KEY_SIZE: usize = 32>: Sized {
         K: Serialize,
         V: Serialize + DeserializeOwned,
     {
-        Ok(
-            if let Some(value) = self.get_raw(serde_json::to_vec(&key)?)? {
-                serde_json::from_slice(&value)?
-            } else {
-                let value = func(&key)?;
-                self.set_raw(serde_json::to_vec(&key)?, serde_json::to_vec(&value)?)?;
-                value
-            },
-        )
+        if let Some(value) = self.get_raw(serde_json::to_vec(&key)?)? {
+            Ok(serde_json::from_slice(&value)?)
+        } else {
+            self.set_and_get(key, func)
+        }
+    }
+
+    /// Set a value in the cache database and return the value.
+    ///
+    /// # Errors
+    /// If the key or the value cannot be serialized or deserialized.
+    fn set_and_get<K, V>(&self, key: K, func: impl FnOnce(&K) -> Result<V>) -> Result<V>
+    where
+        K: Serialize,
+        V: Serialize,
+    {
+        let value = func(&key)?;
+        self.set_raw(serde_json::to_vec(&key)?, serde_json::to_vec(&value)?)?;
+        Ok(value)
     }
 
     /// Get a value from the cache database.
