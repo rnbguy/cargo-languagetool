@@ -1,19 +1,18 @@
-[tasks.format-rust]
+[tasks.rustfmt]
 command = "cargo"
 args    = [ "fmt" ]
 
-[tasks.format-toml]
+[tasks.taplo]
 command = "taplo"
 args    = [ "fmt" ]
 
-[tasks.format-prettier]
+[tasks.prettier]
 command = "prettier"
 args    = [ "--write", "." ]
 
-
 [tasks.format]
 dependencies = [
-  "format-rust",
-  "format-toml",
-  "format-prettier",
+  "rustfmt",
+  "taplo",
+  "prettier",
 ]
