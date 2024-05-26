@@ -11,6 +11,13 @@ code, and reduce the time people need to spend to know how the crate works and
 what it does. Good examples are necessary, but correct spelling and
 understandable explanations are worth no less.
 
+This is a fork of [`cargo-grammarly`][cargo-grammarly]. Thanks to [`iddm`][iddm]
+for their prior work.
+
+Grammarly [discontinued their developer API](grammarly-dev-api-discontinue). So,
+I decided to switch to [LanguageTool][languagetool]. LanguageTool is free,
+open-source and has a free public API.
+
 # Installing
 
 ```sh
@@ -105,3 +112,6 @@ regular expressions would waste a lot of time.
 [languagetool-api-key]: https://languagetool.org/editor/settings/access-tokens
 [languagetool-rust]: https://crates.io/crates/languagetool-rust
 [annotate-snippets]: https://crates.io/crates/annotate-snippets
+[iddm]: https://github.com/iddm
+[cargo-grammarly]: https://github.com/iddm/cargo-grammarly
+[grammarly-dev-api-discontinue]: https://developer.grammarly.com
