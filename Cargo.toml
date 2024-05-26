@@ -38,6 +38,11 @@ pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 cargo    = { level = "warn", priority = -1 }
 
+
+# from `restriction` group
+std_instead_of_core = "warn"
+
+
 # allows
 multiple_crate_versions = "allow"
 module_name_repetitions = "allow"
