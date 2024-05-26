@@ -15,8 +15,6 @@ use crate::doc::{Docs, FixedDoc, FixedDocs};
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
     use proc_macro2::TokenStream;
 
-    // dbg!(dir);
-
     let is_rs = |e: &walkdir::DirEntry| -> bool {
         e.file_type().is_file()
             && e.path()
@@ -27,7 +25,6 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
         use std::fs;
         let content = fs::read_to_string(path)?;
         let stream: TokenStream = syn::parse_str(&content)?;
-        // dbg!(&stream);
         Ok(Docs::from((path, stream)))
     };
 
@@ -38,7 +35,6 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
         .filter(is_rs)
         .filter_map(|e| Some(e.path().to_str()?.to_owned()))
         .collect::<Vec<String>>();
-    // dbg!(&files);
 
     files
         .iter()
