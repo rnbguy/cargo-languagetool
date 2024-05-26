@@ -83,7 +83,7 @@ impl Cargo {
                 Ok(acc)
             })?;
 
-        check_grammar(&server, &cmd.config, &docs)?;
+        check_grammar(&server, &cmd.config, docs)?;
 
         println!("Checked {} files.", docs.len());
 

@@ -223,10 +223,10 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
 pub fn check_grammar(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    docs: &[Docs],
+    docs: impl IntoIterator<Item = Docs>,
 ) -> Result<()> {
     for doc in docs {
-        let mut fixed_doc = FixedDocs::try_from(doc.clone())?;
+        let mut fixed_doc = FixedDocs::try_from(doc)?;
         docs_checked(server, config, &mut fixed_doc)?;
         transform_matches(&mut fixed_doc)?;
         print_docs(&fixed_doc)?;
