@@ -14,16 +14,16 @@ pub trait CacheDb<const HASHED_KEY_SIZE: usize = 32>: Sized {
     /// If the cache db cannot be created.
     fn new(dir: impl AsRef<Path>) -> Result<Self>;
 
-    /// Get a value using hashed key from the cache database.
+    /// Get a value using a hashed key from the cache database.
     ///
     /// # Errors
     /// If the key or the value cannot be serialized or deserialized.
     fn get_hashed_key_raw(&self, hashed_key: [u8; HASHED_KEY_SIZE]) -> Result<Option<Vec<u8>>>;
 
-    /// Set a value using hashed key in the cache database.
+    /// Set a value using a hashed key in the cache database.
     ///
     /// # Errors
-    /// If the key or the value cannot be serialized or deserialized or if the value cannot be set.
+    /// If the key or the value cannot be serialized or deserialized, or if the value cannot be set.
     fn set_hashed_key_raw(&self, hashed_key: [u8; HASHED_KEY_SIZE], value: Vec<u8>) -> Result<()>;
 
     /// Hash a key.
@@ -62,7 +62,7 @@ pub trait CacheDb<const HASHED_KEY_SIZE: usize = 32>: Sized {
     /// Set a value in the cache database.
     ///
     /// # Errors
-    /// If the key or the value cannot be serialized or deserialized or if the value cannot be set.
+    /// If the key or the value cannot be serialized or deserialized, or if the value cannot be set.
     fn set_raw(&self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
         let hashed_key = Self::hashed_key(key);
         self.set_hashed_key_raw(hashed_key, value)
