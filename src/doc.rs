@@ -86,8 +86,8 @@ pub struct FixedDoc {
     pub check_response: Option<languagetool_rust::CheckResponse>,
 }
 
-impl std::fmt::Display for FixedDoc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for FixedDoc {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut iter = self.text.iter();
         if let Some((first_string, _)) = iter.next() {
             write!(f, "{first_string}")?;

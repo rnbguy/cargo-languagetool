@@ -31,7 +31,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<Docs>> {
     let files = walkdir::WalkDir::new(dir)
         .max_depth(999)
         .into_iter()
-        .filter_map(std::result::Result::ok)
+        .filter_map(core::result::Result::ok)
         .filter(is_rs)
         .filter_map(|e| Some(e.path().to_str()?.to_owned()))
         .collect::<Vec<String>>();
