@@ -83,9 +83,11 @@ impl Cargo {
                 Ok(acc)
             })?;
 
+        let n_files = docs.len();
+
         check_grammar(&server, &cmd.config, docs)?;
 
-        println!("Checked {} files.", docs.len());
+        println!("Checked {n_files} files.");
 
         Ok(())
     }
