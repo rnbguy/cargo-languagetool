@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2](https://github.com/rnbguy/cargo-languagetool/compare/v0.3.1...v0.3.2) - 2024-05-26
+
+### Other
+- github PAT for release trigger
+- update workflow files
+
 ## [0.3.1](https://github.com/rnbguy/cargo-languagetool/compare/v0.3.0...v0.3.1) - 2024-05-26
 
 ### Other
