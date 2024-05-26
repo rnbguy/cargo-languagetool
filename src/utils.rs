@@ -107,15 +107,19 @@ fn doc_checked(
             .context("failed to get cache directory")?;
     let cache_db = SledCacheDb::new(cargo_languagetool_project_dir.cache_dir())?;
 
-    doc.check_response = Some(if config.no_cache {
-        cache_db.set_and_get(&check_request, |req| {
-            Ok(rt.block_on(async { server.check(req).await })?)
-        })?
-    } else {
-        cache_db.get_or(&check_request, |req| {
-            Ok(rt.block_on(async { server.check(req).await })?)
-        })?
-    });
+    if config.no_cache {
+        doc.check_response = Some({
+            cache_db.set_and_get(&check_request, |req| {
+                Ok(rt.block_on(async { server.check(req).await })?)
+            })?
+        });
+    } else if config.show_all || !cache_db.hits(&check_request)? {
+        doc.check_response = Some({
+            cache_db.get_or(&check_request, |req| {
+                Ok(rt.block_on(async { server.check(req).await })?)
+            })?
+        });
+    }
 
     Ok(())
 }
@@ -139,8 +143,9 @@ fn print_docs(docs: &FixedDocs) -> Result<()> {
     for (file, docs) in &docs.fixed {
         let source = std::fs::read_to_string(file)?;
         for doc in docs {
-            let check_response = doc.check_response.as_ref().context("No check response")?;
-            FixedDoc::annotate(file, &source, check_response);
+            if let Some(check_response) = &doc.check_response {
+                FixedDoc::annotate(file, &source, check_response);
+            }
         }
     }
 
@@ -151,72 +156,73 @@ fn transform_matches(docs: &mut FixedDocs) -> Result<()> {
     for (file, docs) in &mut docs.fixed {
         for doc in docs {
             let doc_str = doc.to_string();
-            let check_response = doc.check_response.as_mut().context("No check response")?;
-            for each_match in &mut check_response.matches {
-                let file_str = std::fs::read_to_string(file)?;
+            if let Some(check_response) = doc.check_response.as_mut() {
+                for each_match in &mut check_response.matches {
+                    let file_str = std::fs::read_to_string(file)?;
 
-                assert_eq!(each_match.length, each_match.context.length);
+                    assert_eq!(each_match.length, each_match.context.length);
 
-                let row = doc_str
-                    .chars()
-                    .take(each_match.offset)
-                    .filter(|&c| c == '\n')
-                    .count();
+                    let row = doc_str
+                        .chars()
+                        .take(each_match.offset)
+                        .filter(|&c| c == '\n')
+                        .count();
 
-                let (_line, span) = &doc.text[row];
+                    let (_line, span) = &doc.text[row];
 
-                let doc_prev_line_end_offset = doc_str
-                    .lines()
-                    .take(row)
-                    .map(|st| st.len() + 1) // because of extra space
-                    .sum::<usize>();
+                    let doc_prev_line_end_offset = doc_str
+                        .lines()
+                        .take(row)
+                        .map(|st| st.len() + 1) // because of extra space
+                        .sum::<usize>();
 
-                // offset of the match in the line in doc comments
-                let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
+                    // offset of the match in the line in doc comments
+                    let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
 
-                let line_row = span.start.line;
-                let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
+                    let line_row = span.start.line;
+                    let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
 
-                // line beginning in the file
-                let line_begin_offset = file_str
-                    .lines()
-                    .take(line_row - 1)
-                    .map(|st| st.len() + 1)
-                    .sum::<usize>();
+                    // line beginning in the file
+                    let line_begin_offset = file_str
+                        .lines()
+                        .take(line_row - 1)
+                        .map(|st| st.len() + 1)
+                        .sum::<usize>();
 
-                let doc_match_offset = each_match.offset;
+                    let doc_match_offset = each_match.offset;
 
-                // updating value
-                each_match.offset = line_begin_offset + line_offset;
+                    // updating value
+                    each_match.offset = line_begin_offset + line_offset;
 
-                // LT context starts at: each_match.offset - each_match.context.offset
-                // start the context from the same line as the beginning of the match.
-                each_match.context.offset = line_offset; // this gets changed too
+                    // LT context starts at: each_match.offset - each_match.context.offset
+                    // start the context from the same line as the beginning of the match.
+                    each_match.context.offset = line_offset; // this gets changed too
 
-                // end the context at the end of the line of the end of the match.
+                    // end the context at the end of the line of the end of the match.
 
-                let mut new_context_length = 0;
-                let mut length_delta = 0;
-                let mut match_count = doc_prev_line_end_offset;
+                    let mut new_context_length = 0;
+                    let mut length_delta = 0;
+                    let mut match_count = doc_prev_line_end_offset;
 
-                for (doc_line, file_line) in doc_str
-                    .lines()
-                    .skip(row)
-                    .zip(file_str.lines().skip(line_row - 1))
-                {
-                    new_context_length += file_line.len() + 1; // because of newline
-                    match_count += doc_line.len() + 1; // because of newline
-                    if doc_match_offset + each_match.length < match_count {
-                        break;
+                    for (doc_line, file_line) in doc_str
+                        .lines()
+                        .skip(row)
+                        .zip(file_str.lines().skip(line_row - 1))
+                    {
+                        new_context_length += file_line.len() + 1; // because of newline
+                        match_count += doc_line.len() + 1; // because of newline
+                        if doc_match_offset + each_match.length < match_count {
+                            break;
+                        }
+                        length_delta += span.start.column + 3; // because of rust comment tags
                     }
-                    length_delta += span.start.column + 3; // because of rust comment tags
+
+                    each_match.length += length_delta;
+                    each_match.context.length = each_match.length;
+
+                    file_str[line_begin_offset..][..new_context_length]
+                        .clone_into(&mut each_match.context.text);
                 }
-
-                each_match.length += length_delta;
-                each_match.context.length = each_match.length;
-
-                file_str[line_begin_offset..][..new_context_length]
-                    .clone_into(&mut each_match.context.text);
             }
         }
     }

@@ -6,6 +6,7 @@ use color_eyre::Result;
 use crate::languagetool::Categories;
 use crate::utils::{check_grammar, fetch_docs};
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Parser)]
 pub struct Config {
     #[clap(
@@ -43,6 +44,9 @@ pub struct Config {
 
     #[clap(long, help = "Disable cache query.")]
     pub no_cache: bool,
+
+    #[clap(long, help = "Show all doc comments (even cached).")]
+    pub show_all: bool,
 }
 
 #[derive(Args)]
