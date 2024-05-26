@@ -1,14 +1,14 @@
 [package]
 name        = "cargo-languagetool"
-version     = "0.1.2"
+version     = "0.1.0"
 authors     = [ "Ranadeep Biswas <mail@rnbguy.at>" ]
 readme      = "README.md"
 repository  = "https://github.com/rnbguy/cargo-languagetool"
 homepage    = "https://github.com/rnbguy/cargo-languagetool"
-license     = "MIT/Apache-2.0"
+license     = "MIT"
 description = "A third-party cargo extension for checking grammar in the documentation and comments."
 edition     = "2021"
-keywords    = [ "grammar", "english", "api", "request", "language" ]
+keywords    = [ "grammar", "english", "api", "request", "language", "languagetool" ]
 categories  = [ "development-tools", "development-tools::cargo-plugins" ]
 
 [dependencies]
