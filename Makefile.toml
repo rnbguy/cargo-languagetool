@@ -16,3 +16,14 @@ dependencies = [
   "taplo",
   "prettier",
 ]
+
+[tasks.test]
+command = "cargo"
+args    = [ "nextest", "run" ]
+
+[tasks.ready]
+dependencies = [
+  "format",
+  "clippy",
+  "test",
+]

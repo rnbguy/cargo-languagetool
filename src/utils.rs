@@ -4,7 +4,7 @@ use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 use languagetool_rust::check::Level as LanguageToolLevel;
 
-use crate::cache::SledCacheDb;
+use crate::cache::{CacheDb, SledCacheDb};
 use crate::cli::Config;
 use crate::doc::{Docs, FixedDoc, FixedDocs};
 
@@ -102,7 +102,10 @@ fn doc_checked(
 
     // doc.check_response = Some(rt.block_on(async { server.check(&check_request).await })?);
 
-    let cache_db = SledCacheDb::new()?;
+    let cargo_languagetool_project_dir =
+        directories::ProjectDirs::from("rnbguy", "github", "cargo-languagetool")
+            .context("failed to get cache directory")?;
+    let cache_db = SledCacheDb::new(cargo_languagetool_project_dir.cache_dir())?;
     doc.check_response = Some(cache_db.get_or(&check_request, |req| {
         Ok(rt.block_on(async { server.check(req).await })?)
     })?);
