@@ -1,5 +1,6 @@
 # `cargo languagetool`
 
+[![Crates.io Version][crates-io-badge]][crates-io-link]
 [![MIT][license-image]][license-link]
 
 > [!WARNING]\
@@ -106,8 +107,10 @@ The doc comments are parsed using the `syn` and `proc_macro2` crates. These are
 used specifically to know where in the code these comments are. Doing it with
 regular expressions would waste a lot of time.
 
-[license-image]: https://img.shields.io/badge/License-MIT-yellow.svg
+[license-image]: https://img.shields.io/badge/License-MIT-yellow
 [license-link]: https://github.com/rnbguy/cargo-languagetool/blob/main/LICENSE
+[crates-io-link]: https://crates.io/crates/cargo-languagetool
+[crates-io-badge]: https://img.shields.io/crates/v/cargo-languagetool
 [languagetool]: https://languagetoolplus.com
 [languagetool-api-key]: https://languagetool.org/editor/settings/access-tokens
 [languagetool-rust]: https://crates.io/crates/languagetool-rust
