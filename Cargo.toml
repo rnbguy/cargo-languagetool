@@ -8,7 +8,7 @@ homepage    = "https://github.com/rnbguy/cargo-languagetool"
 license     = "MIT"
 description = "A third-party cargo extension for checking grammar in the documentation and comments."
 edition     = "2021"
-keywords    = [ "grammar", "english", "api", "request", "language", "languagetool" ]
+keywords    = [ "grammar", "spellcheck", "documentation", "languagetool" ]
 categories  = [ "development-tools", "development-tools::cargo-plugins" ]
 
 [dependencies]
