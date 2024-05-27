@@ -5,14 +5,13 @@ use color_eyre::Result;
 use crate::cache::Cacheable;
 use crate::cli::Config;
 use crate::doc::{Docs, RawDocs};
+use proc_macro2::TokenStream;
 
 /// Reads the .rs files in the directory recursively.
 ///
 /// # Errors
 /// If an error occurs.
 pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, RawDocs)>> {
-    use proc_macro2::TokenStream;
-
     walkdir::WalkDir::new(dir)
         .max_depth(999)
         .into_iter()
