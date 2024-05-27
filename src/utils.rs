@@ -49,7 +49,7 @@ pub fn check_and_annotate<I: IntoIterator<Item = (String, RawDocs)>, C: Cacheabl
 
         let source = std::fs::read_to_string(&file)?;
 
-        docs.transform_matches(&source)?;
+        docs.transform_matches(&source);
         docs.annotate(&file, &source);
     }
 

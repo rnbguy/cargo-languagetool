@@ -177,6 +177,78 @@ impl Doc {
         Ok(())
     }
 
+    /// Transform annotations for raw source.
+    pub fn transform_matches(&mut self, source: &str) {
+        let doc_str = self.to_string();
+        if let Some(check_response) = self.check_response.as_mut() {
+            for each_match in &mut check_response.matches {
+                // ensured by LT API.
+                // assert_eq!(each_match.length, each_match.context.length);
+
+                let row = doc_str
+                    .chars()
+                    .take(each_match.offset)
+                    .filter(|chr| chr == &'\n')
+                    .count();
+
+                let (_line, span) = &self.text[row];
+
+                let doc_prev_line_end_offset = doc_str
+                    .lines()
+                    .take(row)
+                    .map(|st| st.len() + 1) // because of extra space
+                    .sum::<usize>();
+
+                // offset of the match in the line in doc comments
+                let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
+
+                let line_row = span.start.line;
+                let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
+
+                // line beginning in the file
+                let line_begin_offset = source
+                    .lines()
+                    .take(line_row - 1)
+                    .map(|st| st.len() + 1)
+                    .sum::<usize>();
+
+                let doc_match_offset = each_match.offset;
+
+                // updating value
+                each_match.offset = line_begin_offset + line_offset;
+
+                // LT context starts at: each_match.offset - each_match.context.offset
+                // start the context from the same line as the beginning of the match.
+                each_match.context.offset = line_offset; // this gets changed too
+
+                // end the context at the end of the line of the end of the match.
+
+                let mut new_context_length = 0;
+                let mut length_delta = 0;
+                let mut match_count = doc_prev_line_end_offset;
+
+                for (doc_line, file_line) in doc_str
+                    .lines()
+                    .skip(row)
+                    .zip(source.lines().skip(line_row - 1))
+                {
+                    new_context_length += file_line.len() + 1; // because of newline
+                    match_count += doc_line.len() + 1; // because of newline
+                    if doc_match_offset + each_match.length < match_count {
+                        break;
+                    }
+                    length_delta += span.start.column + 3; // because of rust comment tags
+                }
+
+                each_match.length += length_delta;
+                each_match.context.length = each_match.length;
+
+                source[line_begin_offset..][..new_context_length]
+                    .clone_into(&mut each_match.context.text);
+            }
+        }
+    }
+
     /// Annotate the doc with the check response.
     ///
     /// # Errors
@@ -329,82 +401,13 @@ impl Docs {
     ///
     /// # Errors
     /// If an error occurs.
-    pub fn transform_matches(&mut self, source: &str) -> Result<()> {
+    pub fn transform_matches(&mut self, source: &str) {
         for doc in &mut self.fixed {
-            let doc_str = doc.to_string();
-            if let Some(check_response) = doc.check_response.as_mut() {
-                for each_match in &mut check_response.matches {
-                    // ensured by LT API.
-                    // assert_eq!(each_match.length, each_match.context.length);
-
-                    let row = doc_str
-                        .chars()
-                        .take(each_match.offset)
-                        .filter(|chr| chr == &'\n')
-                        .count();
-
-                    let (_line, span) = &doc.text[row];
-
-                    let doc_prev_line_end_offset = doc_str
-                        .lines()
-                        .take(row)
-                        .map(|st| st.len() + 1) // because of extra space
-                        .sum::<usize>();
-
-                    // offset of the match in the line in doc comments
-                    let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
-
-                    let line_row = span.start.line;
-                    let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
-
-                    // line beginning in the file
-                    let line_begin_offset = source
-                        .lines()
-                        .take(line_row - 1)
-                        .map(|st| st.len() + 1)
-                        .sum::<usize>();
-
-                    let doc_match_offset = each_match.offset;
-
-                    // updating value
-                    each_match.offset = line_begin_offset + line_offset;
-
-                    // LT context starts at: each_match.offset - each_match.context.offset
-                    // start the context from the same line as the beginning of the match.
-                    each_match.context.offset = line_offset; // this gets changed too
-
-                    // end the context at the end of the line of the end of the match.
-
-                    let mut new_context_length = 0;
-                    let mut length_delta = 0;
-                    let mut match_count = doc_prev_line_end_offset;
-
-                    for (doc_line, file_line) in doc_str
-                        .lines()
-                        .skip(row)
-                        .zip(source.lines().skip(line_row - 1))
-                    {
-                        new_context_length += file_line.len() + 1; // because of newline
-                        match_count += doc_line.len() + 1; // because of newline
-                        if doc_match_offset + each_match.length < match_count {
-                            break;
-                        }
-                        length_delta += span.start.column + 3; // because of rust comment tags
-                    }
-
-                    each_match.length += length_delta;
-                    each_match.context.length = each_match.length;
-
-                    source[line_begin_offset..][..new_context_length]
-                        .clone_into(&mut each_match.context.text);
-                }
-            }
+            doc.transform_matches(source);
         }
-
-        Ok(())
     }
 
-    /// Pretty-printer.
+    /// Annotate results.
     pub fn annotate(&self, file: &str, source: &str) {
         for doc in &self.fixed {
             doc.annotate(file, source);
