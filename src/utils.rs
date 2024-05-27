@@ -45,12 +45,17 @@ pub fn check_and_annotate<I: IntoIterator<Item = (String, RawDocs)>, C: Cacheabl
 ) -> Result<()> {
     for (file, doc) in files {
         let mut docs = Docs::try_from(doc)?;
-        docs.checked(server, config, cache)?;
+
+        for doc in &mut docs.fixed {
+            doc.checked(server, config, cache)?;
+        }
 
         let source = std::fs::read_to_string(&file)?;
 
-        docs.transform_matches(&source);
-        docs.annotate(&file, &source);
+        for doc in &mut docs.fixed {
+            doc.transform_matches(&source);
+            doc.annotate(&file, &source);
+        }
     }
 
     Ok(())

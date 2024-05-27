@@ -369,39 +369,3 @@ impl TryFrom<RawDocs> for Docs {
         Ok(Self { original, fixed })
     }
 }
-
-impl Docs {
-    /// Checks docs for grammar.
-    ///
-    /// # Errors
-    /// If an error occurs.
-    pub fn checked<C: Cacheable>(
-        &mut self,
-        server: &languagetool_rust::ServerClient,
-        config: &Config,
-        cache: &C,
-    ) -> Result<()> {
-        for doc in &mut self.fixed {
-            doc.checked(server, config, cache)?;
-        }
-
-        Ok(())
-    }
-
-    /// Transform `check_response` matches back for raw source annotation.
-    ///
-    /// # Errors
-    /// If an error occurs.
-    pub fn transform_matches(&mut self, source: &str) {
-        for doc in &mut self.fixed {
-            doc.transform_matches(source);
-        }
-    }
-
-    /// Annotate results.
-    pub fn annotate(&self, file: &str, source: &str) {
-        for doc in &self.fixed {
-            doc.annotate(file, source);
-        }
-    }
-}
