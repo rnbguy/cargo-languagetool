@@ -181,63 +181,65 @@ impl Doc {
     ///
     /// # Errors
     /// If an error occurs.
-    pub fn annotate(file: &str, source: &str, check_response: &CheckResponse) {
-        debug!("Annotating: {}", file);
+    pub fn annotate(&self, file: &str, source: &str) {
+        if let Some(check_response) = self.check_response.as_ref() {
+            debug!("Annotating: {}", file);
 
-        check_response.matches.iter().for_each(|each_match| {
-            debug!("Annotating: {:?}", each_match);
+            check_response.matches.iter().for_each(|each_match| {
+                debug!("Annotating: {:?}", each_match);
 
-            let replacements = each_match.replacements.iter().fold(
-                String::new(),
-                |mut joined_string, replacement| {
-                    if !joined_string.is_empty() {
-                        joined_string.push_str(", ");
-                    }
-                    joined_string.push_str(&replacement.value);
-                    joined_string
-                },
-            );
-
-            let snippet = Snippet::source(&each_match.context.text)
-                .line_start(
-                    1 + source
-                        .chars()
-                        .take(each_match.offset)
-                        .filter(|chr| chr == &'\n')
-                        .count(),
-                )
-                .origin(file)
-                .fold(true)
-                .annotation(
-                    Level::Error
-                        .span(
-                            each_match.context.offset
-                                ..each_match.context.offset + each_match.context.length,
-                        )
-                        .label(&each_match.rule.description),
-                )
-                .annotation(
-                    Level::Help
-                        .span(
-                            each_match.context.offset
-                                ..each_match.context.offset + each_match.context.length,
-                        )
-                        .label(&replacements),
+                let replacements = each_match.replacements.iter().fold(
+                    String::new(),
+                    |mut joined_string, replacement| {
+                        if !joined_string.is_empty() {
+                            joined_string.push_str(", ");
+                        }
+                        joined_string.push_str(&replacement.value);
+                        joined_string
+                    },
                 );
 
-            let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
+                let snippet = Snippet::source(&each_match.context.text)
+                    .line_start(
+                        1 + source
+                            .chars()
+                            .take(each_match.offset)
+                            .filter(|chr| chr == &'\n')
+                            .count(),
+                    )
+                    .origin(file)
+                    .fold(true)
+                    .annotation(
+                        Level::Error
+                            .span(
+                                each_match.context.offset
+                                    ..each_match.context.offset + each_match.context.length,
+                            )
+                            .label(&each_match.rule.description),
+                    )
+                    .annotation(
+                        Level::Help
+                            .span(
+                                each_match.context.offset
+                                    ..each_match.context.offset + each_match.context.length,
+                            )
+                            .label(&replacements),
+                    );
 
-            let message = Level::Error
-                .title(&each_match.message)
-                .id(&message_id)
-                .snippet(snippet);
+                let message_id = format!("{}:{}", each_match.rule.id, each_match.rule.category.id);
 
-            let renderer = Renderer::styled();
+                let message = Level::Error
+                    .title(&each_match.message)
+                    .id(&message_id)
+                    .snippet(snippet);
 
-            let annotation = renderer.render(message).to_string();
+                let renderer = Renderer::styled();
 
-            println!("{annotation}");
-        });
+                let annotation = renderer.render(message).to_string();
+
+                println!("{annotation}");
+            });
+        }
     }
 }
 
@@ -403,11 +405,9 @@ impl Docs {
     }
 
     /// Pretty-printer.
-    pub fn print_docs(&self, file: &str, source: &str) {
+    pub fn annotate(&self, file: &str, source: &str) {
         for doc in &self.fixed {
-            if let Some(check_response) = &doc.check_response {
-                Doc::annotate(file, source, check_response);
-            }
+            doc.annotate(file, source);
         }
     }
 }

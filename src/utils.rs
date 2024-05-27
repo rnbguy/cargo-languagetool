@@ -16,7 +16,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, RawDocs)>> {
     walkdir::WalkDir::new(dir)
         .max_depth(999)
         .into_iter()
-        .filter_map(core::result::Result::ok)
+        .filter_map(Result::ok)
         .filter(|entry| {
             !entry.file_type().is_dir()
                 && entry
@@ -34,11 +34,11 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, RawDocs)>> {
         .collect::<Result<_>>()
 }
 
-/// Check the grammar of the documents.
+/// Check the grammar of the documents and annotates the results.
 ///
 /// # Errors
 /// If an error occurs.
-pub fn check_grammar<I: IntoIterator<Item = (String, RawDocs)>, C: Cacheable>(
+pub fn check_and_annotate<I: IntoIterator<Item = (String, RawDocs)>, C: Cacheable>(
     server: &languagetool_rust::ServerClient,
     config: &Config,
     files: I,
@@ -51,7 +51,7 @@ pub fn check_grammar<I: IntoIterator<Item = (String, RawDocs)>, C: Cacheable>(
         let source = std::fs::read_to_string(&file)?;
 
         docs.transform_matches(&source)?;
-        docs.print_docs(&file, &source);
+        docs.annotate(&file, &source);
     }
 
     Ok(())

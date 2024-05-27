@@ -7,7 +7,7 @@ use color_eyre::Result;
 use crate::cache::sled::SledCacheStore;
 use crate::cache::Cacheable;
 use crate::languagetool::categories::Categories;
-use crate::utils::{check_grammar, fetch_docs};
+use crate::utils::{check_and_annotate, fetch_docs};
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Parser)]
@@ -99,7 +99,7 @@ impl Cargo {
             .context("failed to get cache directory")?;
         let cache = SledCacheStore::new(project_dir.cache_dir())?;
 
-        check_grammar(&server, &cmd.config, docs, &cache)?;
+        check_and_annotate(&server, &cmd.config, docs, &cache)?;
 
         println!("Checked {n_files} files.");
 
