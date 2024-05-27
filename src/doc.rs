@@ -2,9 +2,11 @@
 
 use annotate_snippets::{Level, Renderer, Snippet};
 use color_eyre::{Report, Result};
-use languagetool_rust::CheckResponse;
+use languagetool_rust::{check::Level as LanguageToolLevel, CheckResponse};
 use log::debug;
 use proc_macro2::{LineColumn, Literal, Span, TokenStream, TokenTree};
+
+use crate::{cache::Cacheable, cli::Config};
 
 #[derive(Debug, Clone)]
 pub struct RawDocs(Vec<Literal>);
@@ -90,6 +92,91 @@ impl core::fmt::Display for Doc {
 }
 
 impl Doc {
+    /// Checks a doc.
+    ///
+    /// # Errors
+    /// If an error occurred.
+    pub fn checked<C: Cacheable>(
+        &mut self,
+        server: &languagetool_rust::ServerClient,
+        config: &Config,
+        cache: &C,
+    ) -> Result<()> {
+        let mut check_request =
+            languagetool_rust::CheckRequest::default().with_text(self.to_string());
+
+        if let (Some(username), Some(api_key)) = (&config.username, &config.api_key) {
+            check_request.username = Some(username.clone());
+            check_request.api_key = Some(api_key.clone());
+        }
+
+        check_request.language.clone_from(&config.language);
+
+        if config.picky {
+            check_request.level = LanguageToolLevel::Picky;
+        }
+
+        check_request.enabled_categories = Some(
+            config
+                .enable_categories
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+        );
+
+        check_request.enabled_rules = Some(
+            config
+                .enable_rules
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+        );
+
+        check_request.disabled_categories = Some(
+            config
+                .disable_categories
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+        );
+
+        check_request.disabled_rules = Some(
+            config
+                .disable_rules
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+        );
+
+        check_request.enabled_only = config.enable_only;
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .enable_io()
+            .build()?;
+
+        // doc.check_response = Some(rt.block_on(async { server.check(&check_request).await })?);
+
+        if config.no_cache {
+            self.check_response = Some({
+                cache.set_and_get(&check_request, |req| {
+                    Ok(rt.block_on(async { server.check(req).await })?)
+                })?
+            });
+        } else if config.show_all || !cache.hits(&check_request)? {
+            self.check_response = Some({
+                cache.get_or(&check_request, |req| {
+                    Ok(rt.block_on(async { server.check(req).await })?)
+                })?
+            });
+        } else {
+            // !config.no_cache && !config.show_all && cache_db.hits(&check_request)?
+            // we don't print the result.
+        }
+
+        Ok(())
+    }
+
     /// Annotate the doc with the check response.
     ///
     /// # Errors
@@ -215,5 +302,112 @@ impl TryFrom<RawDocs> for Docs {
         )?;
 
         Ok(Self { original, fixed })
+    }
+}
+
+impl Docs {
+    /// Checks docs for grammar.
+    ///
+    /// # Errors
+    /// If an error occurs.
+    pub fn checked<C: Cacheable>(
+        &mut self,
+        server: &languagetool_rust::ServerClient,
+        config: &Config,
+        cache: &C,
+    ) -> Result<()> {
+        for doc in &mut self.fixed {
+            doc.checked(server, config, cache)?;
+        }
+
+        Ok(())
+    }
+
+    /// Transform `check_response` matches back for raw source annotation.
+    ///
+    /// # Errors
+    /// If an error occurs.
+    pub fn transform_matches(&mut self, source: &str) -> Result<()> {
+        for doc in &mut self.fixed {
+            let doc_str = doc.to_string();
+            if let Some(check_response) = doc.check_response.as_mut() {
+                for each_match in &mut check_response.matches {
+                    // ensured by LT API.
+                    // assert_eq!(each_match.length, each_match.context.length);
+
+                    let row = doc_str
+                        .chars()
+                        .take(each_match.offset)
+                        .filter(|chr| chr == &'\n')
+                        .count();
+
+                    let (_line, span) = &doc.text[row];
+
+                    let doc_prev_line_end_offset = doc_str
+                        .lines()
+                        .take(row)
+                        .map(|st| st.len() + 1) // because of extra space
+                        .sum::<usize>();
+
+                    // offset of the match in the line in doc comments
+                    let doc_line_offset = each_match.offset - doc_prev_line_end_offset;
+
+                    let line_row = span.start.line;
+                    let line_offset = span.start.column + 3 + doc_line_offset; // because of rust comment tags
+
+                    // line beginning in the file
+                    let line_begin_offset = source
+                        .lines()
+                        .take(line_row - 1)
+                        .map(|st| st.len() + 1)
+                        .sum::<usize>();
+
+                    let doc_match_offset = each_match.offset;
+
+                    // updating value
+                    each_match.offset = line_begin_offset + line_offset;
+
+                    // LT context starts at: each_match.offset - each_match.context.offset
+                    // start the context from the same line as the beginning of the match.
+                    each_match.context.offset = line_offset; // this gets changed too
+
+                    // end the context at the end of the line of the end of the match.
+
+                    let mut new_context_length = 0;
+                    let mut length_delta = 0;
+                    let mut match_count = doc_prev_line_end_offset;
+
+                    for (doc_line, file_line) in doc_str
+                        .lines()
+                        .skip(row)
+                        .zip(source.lines().skip(line_row - 1))
+                    {
+                        new_context_length += file_line.len() + 1; // because of newline
+                        match_count += doc_line.len() + 1; // because of newline
+                        if doc_match_offset + each_match.length < match_count {
+                            break;
+                        }
+                        length_delta += span.start.column + 3; // because of rust comment tags
+                    }
+
+                    each_match.length += length_delta;
+                    each_match.context.length = each_match.length;
+
+                    source[line_begin_offset..][..new_context_length]
+                        .clone_into(&mut each_match.context.text);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Pretty-printer.
+    pub fn print_docs(&self, file: &str, source: &str) {
+        for doc in &self.fixed {
+            if let Some(check_response) = &doc.check_response {
+                Doc::annotate(file, source, check_response);
+            }
+        }
     }
 }

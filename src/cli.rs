@@ -1,8 +1,11 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser};
+use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 
+use crate::cache::sled::SledCacheStore;
+use crate::cache::Cacheable;
 use crate::languagetool::categories::Categories;
 use crate::utils::{check_grammar, fetch_docs};
 
@@ -92,7 +95,11 @@ impl Cargo {
 
         let n_files = docs.len();
 
-        check_grammar(&server, &cmd.config, docs)?;
+        let project_dir = directories::ProjectDirs::from("rnbguy", "github", "cargo-languagetool")
+            .context("failed to get cache directory")?;
+        let cache = SledCacheStore::new(project_dir.cache_dir())?;
+
+        check_grammar(&server, &cmd.config, docs, &cache)?;
 
         println!("Checked {n_files} files.");
 
