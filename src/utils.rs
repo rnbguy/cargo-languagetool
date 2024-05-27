@@ -7,13 +7,13 @@ use languagetool_rust::check::Level as LanguageToolLevel;
 use crate::cache::sled::SledCacheStore as SledCacheDb;
 use crate::cache::Cacheable;
 use crate::cli::Config;
-use crate::doc::{Docs, FixedDoc, FixedDocs};
+use crate::doc::{Doc, Docs, RawDocs};
 
 /// Reads the .rs files in the directory recursively.
 ///
 /// # Errors
 /// If an error occurs.
-pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, Docs)>> {
+pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, RawDocs)>> {
     use proc_macro2::TokenStream;
 
     walkdir::WalkDir::new(dir)
@@ -31,16 +31,16 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, Docs)>> {
         .map(|path| {
             let content = std::fs::read_to_string(&path)?;
             let stream: TokenStream = syn::parse_str(&content)?;
-            Ok((path, Docs::from(stream)))
+            Ok((path, RawDocs::from(stream)))
         })
-        .filter(|result| result.as_ref().map(|(_, docs)| !docs.0.is_empty()).ok() != Some(true))
+        .filter(|result| result.as_ref().map(|(_, docs)| !docs.is_empty()).ok() != Some(true))
         .collect::<Result<_>>()
 }
 
 fn doc_checked(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    doc: &mut FixedDoc,
+    doc: &mut Doc,
 ) -> Result<()> {
     let mut check_request = languagetool_rust::CheckRequest::default().with_text(doc.to_string());
 
@@ -124,7 +124,7 @@ fn doc_checked(
 fn docs_checked(
     server: &languagetool_rust::ServerClient,
     config: &Config,
-    docs: &mut FixedDocs,
+    docs: &mut Docs,
 ) -> Result<()> {
     for doc in &mut docs.fixed {
         doc_checked(server, config, doc)?;
@@ -134,18 +134,18 @@ fn docs_checked(
 }
 
 /// Pretty-printer.
-fn print_docs(file: &str, docs: &FixedDocs) -> Result<()> {
+fn print_docs(file: &str, docs: &Docs) -> Result<()> {
     let source = std::fs::read_to_string(file)?;
     for doc in &docs.fixed {
         if let Some(check_response) = &doc.check_response {
-            FixedDoc::annotate(file, &source, check_response);
+            Doc::annotate(file, &source, check_response);
         }
     }
 
     Ok(())
 }
 
-fn transform_matches(file: &str, docs: &mut FixedDocs) -> Result<()> {
+fn transform_matches(file: &str, docs: &mut Docs) -> Result<()> {
     for doc in &mut docs.fixed {
         let doc_str = doc.to_string();
         if let Some(check_response) = doc.check_response.as_mut() {
@@ -226,13 +226,13 @@ fn transform_matches(file: &str, docs: &mut FixedDocs) -> Result<()> {
 ///
 /// # Errors
 /// If an error occurs.
-pub fn check_grammar<I: IntoIterator<Item = (String, Docs)>>(
+pub fn check_grammar<I: IntoIterator<Item = (String, RawDocs)>>(
     server: &languagetool_rust::ServerClient,
     config: &Config,
     files: I,
 ) -> Result<()> {
     for (file, doc) in files {
-        let mut fixed_doc = FixedDocs::try_from(doc)?;
+        let mut fixed_doc = Docs::try_from(doc)?;
         docs_checked(server, config, &mut fixed_doc)?;
         transform_matches(&file, &mut fixed_doc)?;
         print_docs(&file, &fixed_doc)?;

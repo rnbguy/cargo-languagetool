@@ -1,18 +1,16 @@
 //! The `docs` module contains all the necessary stuff to work with doc comments.
 
 use annotate_snippets::{Level, Renderer, Snippet};
-use color_eyre::eyre::ContextCompat;
 use color_eyre::{Report, Result};
 use languagetool_rust::CheckResponse;
 use log::debug;
+use proc_macro2::{LineColumn, Literal, Span, TokenStream, TokenTree};
 
 #[derive(Debug, Clone)]
-pub struct Docs(pub Vec<proc_macro2::Literal>);
+pub struct RawDocs(Vec<Literal>);
 
-impl From<proc_macro2::TokenStream> for Docs {
-    fn from(stream: proc_macro2::TokenStream) -> Self {
-        use proc_macro2::TokenTree;
-
+impl From<TokenStream> for RawDocs {
+    fn from(stream: TokenStream) -> Self {
         let mut docs = vec![];
         let mut is_doc = false;
         for tree in stream {
@@ -33,14 +31,22 @@ impl From<proc_macro2::TokenStream> for Docs {
     }
 }
 
+impl RawDocs {
+    /// Returns true if empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
-pub struct FixedDocPos {
+pub struct DocPos {
     pub line: usize,
     pub column: usize,
 }
 
-impl From<proc_macro2::LineColumn> for FixedDocPos {
-    fn from(span: proc_macro2::LineColumn) -> Self {
+impl From<LineColumn> for DocPos {
+    fn from(span: LineColumn) -> Self {
         Self {
             line: span.line,
             column: span.column,
@@ -49,13 +55,13 @@ impl From<proc_macro2::LineColumn> for FixedDocPos {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FixedDocSpan {
-    pub start: FixedDocPos,
-    pub end: FixedDocPos,
+pub struct DocSpan {
+    pub start: DocPos,
+    pub end: DocPos,
 }
 
-impl From<proc_macro2::Span> for FixedDocSpan {
-    fn from(span: proc_macro2::Span) -> Self {
+impl From<Span> for DocSpan {
+    fn from(span: Span) -> Self {
         Self {
             start: span.start().into(),
             end: span.end().into(),
@@ -63,14 +69,14 @@ impl From<proc_macro2::Span> for FixedDocSpan {
     }
 }
 
-/// The doc is considered "fixed" when it contains text only.
+/// Contains text only.
 #[derive(Debug, Clone)]
-pub struct FixedDoc {
-    pub text: Vec<(String, FixedDocSpan)>,
-    pub check_response: Option<languagetool_rust::CheckResponse>,
+pub struct Doc {
+    pub text: Vec<(String, DocSpan)>,
+    pub check_response: Option<CheckResponse>,
 }
 
-impl core::fmt::Display for FixedDoc {
+impl core::fmt::Display for Doc {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut iter = self.text.iter();
         if let Some((first_string, _)) = iter.next() {
@@ -83,7 +89,7 @@ impl core::fmt::Display for FixedDoc {
     }
 }
 
-impl FixedDoc {
+impl Doc {
     /// Annotate the doc with the check response.
     ///
     /// # Errors
@@ -149,9 +155,9 @@ impl FixedDoc {
 }
 
 #[derive(Debug, Clone)]
-pub struct FixedDocs {
-    pub original: Docs,
-    pub fixed: Vec<FixedDoc>,
+pub struct Docs {
+    pub original: RawDocs,
+    pub fixed: Vec<Doc>,
 }
 
 // fn fix_string(s: &str) -> String {
@@ -163,50 +169,50 @@ pub struct FixedDocs {
 //         .to_owned()
 // }
 
-impl TryFrom<Docs> for FixedDocs {
+impl TryFrom<RawDocs> for Docs {
     type Error = Report;
 
-    fn try_from(original: Docs) -> Result<Self> {
-        let fixed =
-            original
-                .0
-                .iter()
-                .try_fold::<_, _, Result<_>>(Vec::new(), |mut fixed_docs, doc| {
-                    let (original_string, span) = {
-                        let original_string: String = serde_json::from_str(&doc.to_string())?;
-                        let mut span: FixedDocSpan = doc.span().into();
-                        match original_string.strip_prefix(' ') {
-                            Some(fixed_string) => {
-                                span.start.column += 1;
-                                (fixed_string.to_owned(), span)
-                            }
-                            None => (original_string, span),
+    fn try_from(original: RawDocs) -> Result<Self> {
+        let fixed = original.0.iter().try_fold::<_, _, Result<_>>(
+            Vec::new(),
+            |mut fixed_docs: Vec<Doc>, doc| {
+                let (original_string, span) = {
+                    let original_string: String = serde_json::from_str(&doc.to_string())?;
+                    let mut span: DocSpan = doc.span().into();
+                    match original_string.strip_prefix(' ') {
+                        Some(fixed_string) => {
+                            span.start.column += 1; // because, leading space is trimmed.
+                            (fixed_string.to_owned(), span)
                         }
-                    };
+                        None => (original_string, span),
+                    }
+                };
 
-                    if fixed_docs.is_empty() {
-                        fixed_docs.push(FixedDoc {
-                            text: vec![(original_string, span)],
-                            check_response: None,
-                        });
-                    } else {
-                        let last = fixed_docs.last_mut().context("No last doc")?;
+                if let Some(last) = fixed_docs.last_mut() {
+                    // If the lines are consecutive, then these two doc comments belong to a single block.
 
-                        // If the lines are consecutive, then these two doc comments belong to a single block.
-                        if span.start.line - last.text.last().context("must have one")?.1.end.line
-                            == 1
-                        {
+                    if let Some(last_line) = last.text.last() {
+                        if span.start.line - last_line.1.end.line == 1 {
                             last.text.push((original_string, span));
                         } else {
-                            fixed_docs.push(FixedDoc {
+                            fixed_docs.push(Doc {
                                 text: vec![(original_string, span)],
                                 check_response: None,
                             });
                         }
+                    } else {
+                        // unreachable!()
                     }
+                } else {
+                    fixed_docs.push(Doc {
+                        text: vec![(original_string, span)],
+                        check_response: None,
+                    });
+                }
 
-                    Ok(fixed_docs)
-                })?;
+                Ok(fixed_docs)
+            },
+        )?;
 
         Ok(Self { original, fixed })
     }
