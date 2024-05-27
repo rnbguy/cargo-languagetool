@@ -55,3 +55,12 @@ pub fn check_and_annotate<I: IntoIterator<Item = (String, RawDocs)>, C: Cacheabl
 
     Ok(())
 }
+
+// fn fix_string(s: &str) -> String {
+//     s.replace("/// ", "")
+//         .replace("//! ", "")
+//         .replace(r#"\""#, r#"""#)
+//         .trim_matches('\"')
+//         .trim()
+//         .to_owned()
+// }

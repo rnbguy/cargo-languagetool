@@ -321,15 +321,6 @@ pub struct Docs {
     pub fixed: Vec<Doc>,
 }
 
-// fn fix_string(s: &str) -> String {
-//     s.replace("/// ", "")
-//         .replace("//! ", "")
-//         .replace(r#"\""#, r#"""#)
-//         .trim_matches('\"')
-//         .trim()
-//         .to_owned()
-// }
-
 impl TryFrom<RawDocs> for Docs {
     type Error = Report;
 
