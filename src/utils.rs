@@ -29,7 +29,7 @@ pub fn fetch_docs(dir: &PathBuf) -> Result<Vec<(String, RawDocs)>> {
             let stream: TokenStream = syn::parse_str(&content)?;
             Ok((path, RawDocs::from(stream)))
         })
-        .filter(|result| result.as_ref().map(|(_, docs)| !docs.is_empty()).ok() != Some(true))
+        .filter(|result| result.as_ref().map(|(_, docs)| docs.is_empty()).ok() != Some(true))
         .collect::<Result<_>>()
 }
 
