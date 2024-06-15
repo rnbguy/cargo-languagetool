@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use color_eyre::Result;
+use proc_macro2::TokenStream;
 
 use crate::cache::Cacheable;
 use crate::cli::Config;
 use crate::doc::{Docs, RawDocs};
-use proc_macro2::TokenStream;
 
 /// Reads the .rs files in the directory recursively.
 ///

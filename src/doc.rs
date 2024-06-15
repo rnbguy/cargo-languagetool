@@ -2,11 +2,13 @@
 
 use annotate_snippets::{Level, Renderer, Snippet};
 use color_eyre::{Report, Result};
-use languagetool_rust::{check::Level as LanguageToolLevel, CheckResponse};
+use languagetool_rust::check::Level as LanguageToolLevel;
+use languagetool_rust::CheckResponse;
 use log::debug;
 use proc_macro2::{LineColumn, Literal, Span, TokenStream, TokenTree};
 
-use crate::{cache::Cacheable, cli::Config};
+use crate::cache::Cacheable;
+use crate::cli::Config;
 
 #[derive(Debug, Clone)]
 pub struct RawDocs(Vec<Literal>);
