@@ -1,6 +1,6 @@
 [package]
 name         = "cargo-languagetool"
-version      = "0.4.1"
+version      = "0.4.2"
 authors      = [ "Ranadeep Biswas <mail@rnbguy.at>" ]
 readme       = "README.md"
 repository   = "https://github.com/rnbguy/cargo-languagetool"
