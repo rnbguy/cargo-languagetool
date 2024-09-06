@@ -1,15 +1,16 @@
 [package]
-name        = "cargo-languagetool"
-version     = "0.4.1"
-authors     = [ "Ranadeep Biswas <mail@rnbguy.at>" ]
-readme      = "README.md"
-repository  = "https://github.com/rnbguy/cargo-languagetool"
-homepage    = "https://github.com/rnbguy/cargo-languagetool"
-license     = "MIT"
-description = "A third-party cargo extension for checking grammar in the documentation and comments."
-edition     = "2021"
-keywords    = [ "grammar", "spellcheck", "documentation", "languagetool" ]
-categories  = [ "development-tools", "development-tools::cargo-plugins" ]
+name         = "cargo-languagetool"
+version      = "0.4.1"
+authors      = [ "Ranadeep Biswas <mail@rnbguy.at>" ]
+readme       = "README.md"
+repository   = "https://github.com/rnbguy/cargo-languagetool"
+homepage     = "https://github.com/rnbguy/cargo-languagetool"
+license      = "MIT"
+description  = "A third-party cargo extension for checking grammar in the documentation and comments."
+edition      = "2021"
+keywords     = [ "grammar", "spellcheck", "documentation", "languagetool" ]
+categories   = [ "development-tools", "development-tools::cargo-plugins" ]
+rust-version = "1.81.0"
 
 [dependencies]
 clap              = { version = "4", features = [ "derive", "env" ] }
@@ -38,10 +39,9 @@ pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 cargo    = { level = "warn", priority = -1 }
 
-
 # from `restriction` group
-std_instead_of_core = "warn"
-
+std_instead_of_core             = "warn"
+allow_attributes_without_reason = "warn"
 
 # allows
 multiple_crate_versions = "allow"
