@@ -9,7 +9,10 @@ use crate::cache::Cacheable;
 use crate::languagetool::categories::Categories;
 use crate::utils::{check_and_annotate, fetch_docs};
 
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "This is a CLI configuration struct."
+)]
 #[derive(Parser)]
 pub struct Config {
     #[clap(
