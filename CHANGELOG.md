@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2](https://github.com/rnbguy/cargo-languagetool/compare/v0.4.1...v0.4.2) - 2024-09-06
+
+### Fixed
+- *(lint)* add reason for allow attribute
+
+### Other
+- update lockfile
+- latest rust release
+
 ## [0.4.1](https://github.com/rnbguy/cargo-languagetool/compare/v0.4.0...v0.4.1) - 2024-06-15
 
 ### Fixed
