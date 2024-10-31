@@ -153,7 +153,7 @@ checksum = "8318a53db07bb3f8dca91a600466bdb3f2eaadeedfdbcf02e1accbad9271ba50"
 
 [[package]]
 name = "cargo-languagetool"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "annotate-snippets",
  "clap",
