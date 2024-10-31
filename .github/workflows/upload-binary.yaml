@@ -1,8 +1,5 @@
 name: Upload Assets
 
-permissions:
-  contents: write
-
 on:
   release:
     types: [published]
@@ -23,6 +20,8 @@ defaults:
 jobs:
   upload-assets:
     name: ${{ matrix.target }}
+    permissions:
+      contents: write
     if: github.repository_owner == 'rnbguy' && startsWith(github.event.release.name, 'v')
     runs-on: ${{ matrix.os }}
     strategy:

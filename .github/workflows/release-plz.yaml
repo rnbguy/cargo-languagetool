@@ -1,9 +1,5 @@
 name: Release Plz
 
-permissions:
-  pull-requests: write
-  contents: write
-
 on:
   push:
     branches:
@@ -25,6 +21,9 @@ defaults:
 jobs:
   release-plz:
     name: Release-plz
+    permissions:
+      pull-requests: write
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
